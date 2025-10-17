@@ -168,6 +168,9 @@ export class SubmissionWizard {
     totalBudget: number;
   } | null = null;
 
+  // État de soumission (loading)
+  isSubmitting = signal(false);
+
   /* ==============================
      Navigation locale (UI)
      ============================== */
@@ -1489,7 +1492,8 @@ export class SubmissionWizard {
       return;
     }
 
-    // Afficher un loader
+    // Activer l'état de chargement
+    this.isSubmitting.set(true);
     console.log('⏳ Envoi en cours...');
 
     this.http
@@ -1501,6 +1505,9 @@ export class SubmissionWizard {
       .subscribe({
         next: (response: any) => {
           console.log('✅ Projet soumis avec succès:', response);
+
+          // Désactiver l'état de chargement
+          this.isSubmitting.set(false);
 
           // Préparer le résumé de la soumission
           this.submissionSummary = {
@@ -1518,6 +1525,9 @@ export class SubmissionWizard {
         },
         error: (error) => {
           console.error('❌ Erreur lors de la soumission:', error);
+
+          // Désactiver l'état de chargement
+          this.isSubmitting.set(false);
 
           let errorMessage = 'Une erreur est survenue lors de la soumission du projet.';
 

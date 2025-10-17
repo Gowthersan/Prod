@@ -9,7 +9,7 @@ export class OrganisationService {
     const organisation = await prisma.organisation.findUnique({
       where: { id: userId },
       include: {
-        demandesSubvention: {
+        projets: {
           orderBy: {
             creeLe: 'desc'
           },
@@ -33,7 +33,7 @@ export class OrganisationService {
     const organisations = await prisma.organisation.findMany({
       include: {
         _count: {
-          select: { demandesSubvention: true }
+          select: { projets: true }
         }
       },
       orderBy: {
@@ -52,7 +52,7 @@ export class OrganisationService {
     const organisation = await prisma.organisation.findUnique({
       where: { id },
       include: {
-        demandesSubvention: {
+        projets: {
           orderBy: {
             creeLe: 'desc'
           }
@@ -102,7 +102,7 @@ export class OrganisationService {
       where: { id },
       include: {
         _count: {
-          select: { demandesSubvention: true }
+          select: { projets: true }
         }
       }
     });
@@ -111,7 +111,7 @@ export class OrganisationService {
       throw new AppError('Organisation non trouvée.', 404);
     }
 
-    if (organisation._count.demandesSubvention > 0) {
+    if (organisation._count.projets > 0) {
       throw new AppError('Impossible de supprimer une organisation avec des demandes de subvention existantes.', 400);
     }
 

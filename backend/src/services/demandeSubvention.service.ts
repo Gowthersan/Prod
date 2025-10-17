@@ -2,6 +2,7 @@ import { Prisma } from '@prisma/client';
 import prisma from '../config/db.js';
 import { AppError } from '../middlewares/error.middleware.js';
 import { DemandeSubventionDTO } from '../types/index.js';
+import { sendProjectSubmissionEmails, DemandeData } from '../utils/mail_projet.js';
 
 /**
  * Interface pour les données du formulaire frontend
@@ -395,6 +396,88 @@ export class DemandeSubventionService {
       }, { timeout: 25000 });
 
       console.log('🎉 Projet soumis avec succès !');
+
+      // ========================================
+      // F) Envoyer les emails de confirmation
+      // ========================================
+      if (demande) {
+        try {
+          console.log('\n📧 Envoi des emails de confirmation...');
+
+          const demandeData: DemandeData = {
+            titre: demande.titre,
+            organisation: {
+              nom: demande.organisation?.nom || 'Organisation',
+              email: demande.organisation?.email || null,
+              telephone: demande.organisation?.telephone || null
+            },
+            soumisPar: {
+              nom: demande.soumisPar?.nom || null,
+              prenom: demande.soumisPar?.prenom || null,
+              email: demande.soumisPar?.email || 'unknown@example.com'
+            },
+            domaines: demande.domaines as string[],
+            localisation: demande.localisation,
+            groupeCible: demande.groupeCible,
+            contextJustification: demande.justificationContexte,
+            objectifs: demande.objectifs,
+            expectedResults: demande.resultatsAttendus,
+            dureeMois: demande.dureeMois,
+            montantTotal: 0, // Sera calculé ci-dessous
+            dateDebutActivites: demande.dateDebutActivites,
+            dateFinActivites: demande.dateFinActivites,
+            activitiesSummary: demande.resumeActivites,
+            activites: demande.activites?.map(act => ({
+              titre: act.titre,
+              start: act.debut?.toISOString().split('T')[0] || new Date().toISOString().split('T')[0],
+              end: act.fin?.toISOString().split('T')[0] || new Date().toISOString().split('T')[0],
+              resume: act.resume,
+              subs: act.sousActivites?.map(sub => ({
+                label: sub.libelle,
+                summary: sub.resume || undefined
+              })) || [],
+              lignesBudget: act.lignesBudget?.map(ligne => ({
+                libelle: ligne.libelle,
+                cfa: ligne.cfa,
+                fpbgPct: ligne.pctFpbg,
+                cofinPct: ligne.pctCofin
+              })) || []
+            })),
+            risques: demande.risques?.map(r => ({
+              description: r.description,
+              mitigation: r.mitigation
+            })),
+            usdRate: demande.tauxUsd,
+            indirectOverheads: Number(demande.fraisIndirectsCfa),
+            projectStage: demande.stadeProjet,
+            hasFunding: demande.aFinancement,
+            fundingDetails: demande.detailsFinancement || undefined,
+            sustainability: demande.texteDurabilite,
+            replicability: demande.texteReplication || undefined
+          };
+
+          // Calculer le montant total
+          let montantTotal = 0;
+          demande.activites?.forEach(activite => {
+            activite.lignesBudget?.forEach(ligne => {
+              montantTotal += Number(ligne.cfa) || 0;
+            });
+          });
+          demandeData.montantTotal = montantTotal;
+
+          console.log(`💰 Montant total calculé: ${montantTotal.toLocaleString('fr-FR')} FCFA`);
+
+          // Envoyer les emails (ne pas bloquer si erreur)
+          await sendProjectSubmissionEmails(demandeData);
+
+          console.log('✅ Emails envoyés avec succès !');
+        } catch (emailError: any) {
+          console.error('⚠️  ATTENTION: Erreur lors de l\'envoi des emails (le projet a bien été soumis):');
+          console.error('   ', emailError.message);
+          // Ne pas lancer d'erreur, le projet est déjà soumis
+        }
+      }
+
       return demande;
     } catch (error: any) {
       console.error('❌ Erreur lors de la soumission:', error);
@@ -551,6 +634,12 @@ export class DemandeSubventionService {
                 include: {
                   typeSubvention: true
                 }
+              },
+              activites: {
+                include: {
+                  sousActivites: true,
+                  lignesBudget: true
+                }
               }
             },
             orderBy: {
@@ -561,7 +650,29 @@ export class DemandeSubventionService {
         { timeout: 25000 }
       );
 
-      return demandes;
+      // Calculer le montantTotal pour chaque demande
+      const demandesAvecMontantTotal = demandes.map((demande) => {
+        let montantTotal = 0;
+
+        // Additionner tous les montants CFA des lignes de budget
+        if (demande.activites && demande.activites.length > 0) {
+          demande.activites.forEach((activite) => {
+            if (activite.lignesBudget && activite.lignesBudget.length > 0) {
+              activite.lignesBudget.forEach((ligne) => {
+                montantTotal += Number(ligne.cfa) || 0;
+              });
+            }
+          });
+        }
+
+        // Retourner la demande avec le montantTotal calculé
+        return {
+          ...demande,
+          montantTotal
+        };
+      });
+
+      return demandesAvecMontantTotal;
     } catch (error: any) {
       console.error('Erreur récupération demandes:', error);
       throw new AppError('Erreur lors de la récupération des demandes: ' + error.message, 500);
@@ -676,7 +787,41 @@ export class DemandeSubventionService {
         });
       }
 
-      return demandesUtilisateur;
+      // 4️⃣ Calculer le montantTotal pour chaque demande
+      const demandesAvecMontantTotal = demandesUtilisateur.map((demande) => {
+        let montantTotal = 0;
+
+        console.log(`\n🔍 Calcul du budget pour: "${demande.titre}"`);
+        console.log(`   Nombre d'activités: ${demande.activites?.length || 0}`);
+
+        // Additionner tous les montants CFA des lignes de budget
+        if (demande.activites && demande.activites.length > 0) {
+          demande.activites.forEach((activite, index) => {
+            const nbLignes = activite.lignesBudget?.length || 0;
+            console.log(`   Activité ${index + 1}: "${activite.titre}" - ${nbLignes} ligne(s) de budget`);
+
+            if (activite.lignesBudget && activite.lignesBudget.length > 0) {
+              activite.lignesBudget.forEach((ligne) => {
+                const montantLigne = Number(ligne.cfa) || 0;
+                console.log(`      - ${ligne.libelle}: ${montantLigne} CFA`);
+                montantTotal += montantLigne;
+              });
+            }
+          });
+        } else {
+          console.log(`   ⚠️  Aucune activité trouvée pour cette demande`);
+        }
+
+        console.log(`   💰 Total calculé: ${montantTotal} CFA\n`);
+
+        // Retourner la demande avec le montantTotal calculé
+        return {
+          ...demande,
+          montantTotal
+        };
+      });
+
+      return demandesAvecMontantTotal;
     } catch (error: any) {
       console.error('❌ Erreur récupération demandes utilisateur:', error);
       throw new AppError('Erreur lors de la récupération des demandes: ' + error.message, 500);
@@ -753,7 +898,25 @@ export class DemandeSubventionService {
         }
       }
 
-      return demande;
+      // Calculer le montantTotal en additionnant tous les montants CFA
+      let montantTotal = 0;
+      if (demande.activites && demande.activites.length > 0) {
+        demande.activites.forEach((activite) => {
+          if (activite.lignesBudget && activite.lignesBudget.length > 0) {
+            activite.lignesBudget.forEach((ligne) => {
+              montantTotal += Number(ligne.cfa) || 0;
+            });
+          }
+        });
+      }
+
+      console.log(`💰 Budget total calculé pour "${demande.titre}": ${montantTotal} CFA`);
+
+      // Retourner la demande avec le montantTotal calculé
+      return {
+        ...demande,
+        montantTotal
+      };
     } catch (error: any) {
       if (error instanceof AppError) throw error;
       console.error('Erreur récupération demande:', error);

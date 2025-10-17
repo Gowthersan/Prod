@@ -56,6 +56,7 @@ const LS = {
   templateUrl: './dashboard.html',
 })
 export class Dashboard implements OnInit, OnDestroy {
+  [x: string]: any;
   private fb = inject(FormBuilder);
   private auth = inject(AuthService);
   public router = inject(Router); // Public pour l'utiliser dans le template

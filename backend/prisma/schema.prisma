@@ -247,8 +247,8 @@ model DemandeSubvention {
 
   typeSoumission TypeSoumission      @default(NOTE_CONCEPTUELLE)
   idParent       String?
-  parent         DemandeSubvention?  @relation("SoumissionsEnfants", fields: [idParent], references: [id], onDelete: SetNull)
-  enfants        DemandeSubvention[] @relation("SoumissionsEnfants")
+  // parent         DemandeSubvention?  @relation("SoumissionsEnfants", fields: [idParent], references: [id], onDelete: SetNull)
+  // enfants        DemandeSubvention[] @relation("SoumissionsEnfants")
 
   appelProjets   AppelProjets? @relation(fields: [idAppelProjets], references: [id], onDelete: SetNull)
   idAppelProjets String?
@@ -288,7 +288,6 @@ model DemandeSubvention {
   evaluations  Evaluation[]
   contrat      Contrat?
   rapports     Rapport[]
-  cofinanceurs Cofinanceur[]
 
   // ========================================
   // Étape 5 – Budget (simplifié)
@@ -464,20 +463,6 @@ model Rapport {
   @@index([idDemande, dateEcheance])
 }
 
-model Cofinanceur {
-  id        String            @id @default(cuid())
-  demande   DemandeSubvention @relation(fields: [idDemande], references: [id], onDelete: Cascade)
-  idDemande String
-
-  source   String
-  montant  Decimal @db.Decimal(14, 2)
-  enNature Boolean @default(false)
-
-  creeLe     DateTime @default(now())
-  misAJourLe DateTime @updatedAt
-
-  @@index([idDemande])
-}
 
 model JournalAudit {
   id            String  @id @default(cuid())

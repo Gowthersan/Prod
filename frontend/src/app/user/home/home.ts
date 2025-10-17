@@ -2,6 +2,8 @@ import { CommonModule, NgClass } from '@angular/common';
 import { Component, ElementRef, HostListener, inject, signal } from '@angular/core';
 import { NavigationEnd, Router, RouterLink } from '@angular/router';
 import { filter } from 'rxjs/operators';
+import { FormsModule } from '@angular/forms';
+import { SupportService, SupportContactData } from '../../services/support/support.service';
 
 type Appel = {
   id: string;
@@ -14,17 +16,29 @@ type Appel = {
 @Component({
   selector: 'app-home',
   standalone: true,
-  imports: [CommonModule, RouterLink, NgClass],
+  imports: [CommonModule, RouterLink, NgClass, FormsModule],
   templateUrl: './home.html',
 })
 export class Home {
   private router = inject(Router);
   private elRef = inject(ElementRef<HTMLElement>);
+  private supportService = inject(SupportService);
 
   // --- État UI ---
   isMobileMenuOpen = signal(false);
   isScrolled = signal(false);
   isDropdownOpen = signal(false);
+
+  // --- État formulaire de contact ---
+  contactForm = {
+    name: '',
+    email: '',
+    phone: '',
+    message: ''
+  };
+  isSubmitting = signal(false);
+  showSuccessModal = signal(false);
+  errorMessage = signal<string | null>(null);
 
   // --- Données exemple pour le menu déroulant ---
   private _appels: Appel[] = [
@@ -124,5 +138,72 @@ export class Home {
         });
       }
     }, 100);
+  }
+
+  // --- Gestion du formulaire de contact ---
+  onSubmitContact(event: Event): void {
+    event.preventDefault();
+
+    // Réinitialiser les messages d'erreur
+    this.errorMessage.set(null);
+
+    // Validation basique
+    if (!this.contactForm.name || !this.contactForm.email || !this.contactForm.message) {
+      this.errorMessage.set('Veuillez remplir tous les champs requis');
+      return;
+    }
+
+    // Validation email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(this.contactForm.email)) {
+      this.errorMessage.set('Veuillez entrer une adresse email valide');
+      return;
+    }
+
+    // Validation longueur message
+    if (this.contactForm.message.length < 10) {
+      this.errorMessage.set('Le message doit contenir au moins 10 caractères');
+      return;
+    }
+
+    // Indiquer que la soumission est en cours
+    this.isSubmitting.set(true);
+
+    // Préparer les données
+    const data: SupportContactData = {
+      name: this.contactForm.name.trim(),
+      email: this.contactForm.email.trim(),
+      phone: this.contactForm.phone.trim() || undefined,
+      message: this.contactForm.message.trim()
+    };
+
+    // Envoyer le message
+    this.supportService.sendSupportMessage(data).subscribe({
+      next: (response) => {
+        console.log('[SUCCESS] Message envoyé:', response);
+        this.isSubmitting.set(false);
+        this.showSuccessModal.set(true);
+
+        // Réinitialiser le formulaire
+        this.contactForm = {
+          name: '',
+          email: '',
+          phone: '',
+          message: ''
+        };
+      },
+      error: (error) => {
+        console.error('[ERROR] Erreur lors de l\'envoi:', error);
+        this.isSubmitting.set(false);
+        this.errorMessage.set(
+          error.error?.message || 'Une erreur est survenue lors de l\'envoi. Veuillez réessayer.'
+        );
+      }
+    });
+  }
+
+  // --- Fermer la modal de succès ---
+  closeSuccessModal(): void {
+    this.showSuccessModal.set(false);
   }
 }

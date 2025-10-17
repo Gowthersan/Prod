@@ -200,8 +200,8 @@
             <p class="text-sm text-slate-500">Budget demandé</p>
             <p class="mt-1 text-2xl font-bold text-emerald-600">
               {{
-                getBudgetTotal(mesDemandes()[0]) > 0
-                  ? (getBudgetTotal(mesDemandes()[0]) | currency : 'XAF' : 'symbol' : '1.0-0')
+                (mesDemandes()[0].montantTotal || 0) > 0
+                  ? ((mesDemandes()[0].montantTotal || 0) | currency : 'XAF' : 'symbol' : '1.0-0')
                   : 'Non spécifié'
               }}
             </p>
