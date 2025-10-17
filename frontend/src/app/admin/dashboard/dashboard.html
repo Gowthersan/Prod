@@ -1,0 +1,322 @@
+<!-- ADMIN DASHBOARD — FPBG (vue admin avec nouveau backend) -->
+<div class="w-full">
+  <div class="grid gap-6 md:grid-cols-[280px,1fr]">
+    <!-- ===== SIDEBAR ===== -->
+    <aside
+      class="hidden text-xs font-medium bg-white border shadow-sm md:block md:sticky md:top-0 md:self-start md:min-h-screen text-slate-600"
+    >
+      <div class="p-6 border-b">
+        <p class="text-xl font-bold tracking-wider text-green-400 uppercase">
+          Espace Administrateur
+        </p>
+
+        <div class="grid grid-cols-2 gap-2 mt-4 text-center">
+          <div class="p-3 rounded bg-slate-100">
+            <p class="text-[11px] text-green-400">Projets</p>
+            <p class="text-lg font-semibold text-slate-600">{{ totalProjects() }}</p>
+          </div>
+          <div class="p-3 rounded bg-slate-100">
+            <p class="text-[11px] text-green-400">Soumis</p>
+            <p class="text-lg font-semibold text-slate-600">{{ totalSoumis() }}</p>
+          </div>
+        </div>
+      </div>
+
+      <nav class="p-2 text-sm">
+        <div class="px-3 py-2 text-slate-600">Navigation</div>
+
+        <!-- Vue d'ensemble -->
+        <a
+          routerLink="/admin/dashboard"
+          routerLinkActive="bg-green-500/10 border-l-4 border-green-500"
+          [routerLinkActiveOptions]="{ exact: true }"
+          class="block px-3 py-2 cursor-pointer hover:bg-green-500/10 hover:border-l-4 hover:border-green-500"
+        >
+          Vue d'ensemble
+        </a>
+
+        <!-- Appel à Projets -->
+        <!-- <a
+          routerLink="/aap"
+          routerLinkActive="bg-green-500/10 border-l-4 border-green-500"
+          class="block px-3 py-2 cursor-pointer hover:bg-green-500/10 hover:border-l-4 hover:border-green-500"
+        >
+          Appel à Projets
+        </a>
+
+        Aide & support -->
+        <!-- <a
+          href="mailto:contact@fpbg.ga"
+          class="block px-3 py-2 cursor-pointer hover:bg-green-500/10 hover:border-l-4 hover:border-green-500"
+        >
+          Aide & support
+        </a> -->
+      </nav>
+
+      <div class="p-2 mt-3 border-t">
+        <button
+          type="button"
+          class="w-full px-3 py-2 text-left hover:bg-green-500/10"
+          (click)="logout()"
+        >
+          Se déconnecter
+        </button>
+      </div>
+    </aside>
+
+    <!-- ===== MAIN ===== -->
+    <section class="min-h-screen pr-6">
+      <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h1 class="pt-3 text-3xl"><strong>Tableau de bord</strong></h1>
+          <p class="pt-3 text-slate-600">Suivi des projets soumis et validation</p>
+        </div>
+
+        <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+          <button
+            type="button"
+            class="px-4 py-2 border rounded-lg hover:bg-slate-50"
+            (click)="refresh()"
+            aria-label="Rafraîchir la liste"
+          >
+            🔄 Rafraîchir
+          </button>
+
+          <button
+            type="button"
+            class="px-4 py-2 border rounded-lg md:hidden hover:bg-slate-50"
+            (click)="logout()"
+            aria-label="Se déconnecter"
+          >
+            Se déconnecter
+          </button>
+        </div>
+      </div>
+
+      <!-- Stats cartes -->
+      <div class="grid gap-4 mt-6 sm:grid-cols-4">
+        <div class="p-5 bg-white border rounded-xl">
+          <p class="text-sm text-slate-600">Total Projets</p>
+          <p class="mt-1 text-2xl font-semibold">{{ totalProjects() }}</p>
+        </div>
+        <div class="p-5 bg-white border rounded-xl">
+          <p class="text-sm text-slate-600">Soumis</p>
+          <p class="mt-1 text-2xl font-semibold text-blue-600">{{ totalSoumis() }}</p>
+        </div>
+        <div class="p-5 bg-white border rounded-xl">
+          <p class="text-sm text-slate-600">En Revue</p>
+          <p class="mt-1 text-2xl font-semibold text-amber-600">{{ totalEnRevue() }}</p>
+        </div>
+        <div class="p-5 bg-white border rounded-xl">
+          <p class="text-sm text-slate-600">Approuvés</p>
+          <p class="mt-1 text-2xl font-semibold text-emerald-600">{{ totalApprouve() }}</p>
+        </div>
+      </div>
+
+      <!-- Barre de recherche -->
+      <div class="mt-6">
+        <input
+          type="text"
+          [formControl]="q"
+          placeholder="Rechercher par titre, organisation, localisation..."
+          class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+        />
+      </div>
+
+      <div class="items-center justify-between hidden mt-4 text-sm sm:flex text-slate-600">
+        <p>
+          Cliquez sur <span class="font-medium">Voir</span> pour afficher les détails d'un projet.
+        </p>
+        <p class="text-xs">{{ filtered().length }} projet(s) affiché(s)</p>
+      </div>
+
+      <!-- Loading -->
+      <div *ngIf="loadingDemandes()" class="flex items-center justify-center py-12 mt-8">
+        <svg
+          class="w-10 h-10 text-green-600 animate-spin"
+          xmlns="http://www.w3.org/2000/svg"
+          fill="none"
+          viewBox="0 0 24 24"
+        >
+          <circle
+            class="opacity-25"
+            cx="12"
+            cy="12"
+            r="10"
+            stroke="currentColor"
+            stroke-width="4"
+          ></circle>
+          <path
+            class="opacity-75"
+            fill="currentColor"
+            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+          ></path>
+        </svg>
+      </div>
+
+      <!-- ===== Tableau (Desktop) ===== -->
+      <div *ngIf="!loadingDemandes()" class="hidden mt-4 bg-white border rounded-xl sm:block">
+        <div class="relative max-h-[70vh] overflow-auto">
+          <table class="min-w-full border-collapse">
+            <thead class="sticky top-0 z-20 shadow-sm bg-slate-50">
+              <tr class="text-xs font-medium tracking-wide text-left uppercase text-slate-600">
+                <th class="px-4 py-3 w-[24%]">Organisation</th>
+                <th class="px-4 py-3 w-[28%]">Projet</th>
+                <th class="px-4 py-3 w-[14%]">Statut</th>
+                <th class="px-4 py-3 w-[10%]">Soumis le</th>
+                <th class="px-4 py-3 w-[24%] text-right">Actions</th>
+              </tr>
+            </thead>
+
+            <tbody class="divide-y">
+              <tr *ngFor="let demande of filtered(); trackBy: trackById" class="hover:bg-slate-50">
+                <!-- Organisation -->
+                <td class="px-4 py-4 align-top">
+                  <div class="min-w-0">
+                    <p class="font-medium truncate text-slate-900">
+                      {{ demande.organisation?.nom || '—' }}
+                    </p>
+                    <p class="mt-0.5 text-sm text-slate-600 truncate">
+                      {{ demande.soumisPar?.email || '—' }}
+                    </p>
+                  </div>
+                </td>
+
+                <!-- Projet -->
+                <td class="px-4 py-4 align-top">
+                  <div class="min-w-0">
+                    <p class="font-medium truncate text-slate-900">
+                      {{ demande.titre }}
+                    </p>
+                    <p class="mt-1 text-sm truncate text-slate-600">
+                      {{ demande.localisation }} • {{ demande.dureeMois }} mois
+                    </p>
+                  </div>
+                </td>
+
+                <!-- Statut -->
+                <td class="px-4 py-4 align-top">
+                  <span
+                    class="inline-block rounded-full px-2 py-0.5 text-xs font-medium"
+                    [ngClass]="getStatutClass(demande.statut)"
+                  >
+                    {{ getStatutLabel(demande.statut) }}
+                  </span>
+                </td>
+
+                <!-- Date de soumission -->
+                <td class="px-4 py-4 text-sm align-top text-slate-600">
+                  {{ demande.creeLe | date : 'dd/MM/yy' }}
+                </td>
+
+                <!-- Actions -->
+                <td class="px-4 py-4 align-top">
+                  <div class="flex items-center justify-end gap-2">
+                    <button
+                      type="button"
+                      class="px-2.5 py-1.5 rounded-lg border text-sm hover:bg-slate-50"
+                      (click)="goToRecap(demande.id)"
+                      aria-label="Voir le récap"
+                    >
+                      Voir
+                    </button>
+
+                    <button
+                      *ngIf="demande.statut === 'SOUMIS'"
+                      type="button"
+                      class="px-2.5 py-1.5 rounded-lg border text-sm hover:bg-amber-50 text-amber-700 border-amber-200"
+                      (click)="markInReview(demande)"
+                      aria-label="Mettre en revue"
+                    >
+                      En revue
+                    </button>
+
+                    <button
+                      *ngIf="demande.statut === 'SOUMIS' || demande.statut === 'EN_REVUE'"
+                      type="button"
+                      class="px-2.5 py-1.5 rounded-lg bg-emerald-600 text-white text-sm hover:bg-emerald-700"
+                      (click)="validate(demande)"
+                      aria-label="Approuver le projet"
+                    >
+                      Approuver
+                    </button>
+
+                    <button
+                      *ngIf="demande.statut === 'SOUMIS' || demande.statut === 'EN_REVUE'"
+                      type="button"
+                      class="px-2.5 py-1.5 rounded-lg border border-rose-200 text-rose-700 text-sm hover:bg-rose-50"
+                      (click)="reject(demande)"
+                      aria-label="Rejeter le projet"
+                    >
+                      Rejeter
+                    </button>
+                  </div>
+                </td>
+              </tr>
+
+              <tr *ngIf="filtered().length === 0">
+                <td colspan="5" class="px-4 py-10 text-center text-slate-500">
+                  <div class="flex flex-col items-center gap-3">
+                    <svg
+                      class="w-12 h-12 text-slate-300"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                    >
+                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                      <path d="M14 2v6h6"></path>
+                    </svg>
+                    <p>Aucun projet trouvé</p>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ===== Liste Mobile ===== -->
+      <div *ngIf="!loadingDemandes()" class="grid gap-3 mt-4 sm:hidden">
+        <div
+          *ngFor="let demande of filtered(); trackBy: trackById"
+          class="p-4 bg-white border rounded-xl"
+        >
+          <div class="flex items-start justify-between mb-2">
+            <div class="flex-1">
+              <h3 class="font-semibold text-slate-900 line-clamp-2">{{ demande.titre }}</h3>
+              <p class="mt-1 text-xs text-slate-500">{{ demande.organisation?.nom }}</p>
+            </div>
+            <span
+              class="px-2 py-1 ml-2 text-xs font-medium rounded-full"
+              [ngClass]="getStatutClass(demande.statut)"
+            >
+              {{ getStatutLabel(demande.statut) }}
+            </span>
+          </div>
+
+          <div class="flex items-center justify-between mt-3">
+            <p class="text-xs text-slate-500">{{ demande.creeLe | date : 'dd/MM/yy' }}</p>
+            <div class="flex items-center gap-2">
+              <button
+                type="button"
+                class="px-3 py-1.5 rounded-lg border text-sm"
+                (click)="goToRecap(demande.id)"
+              >
+                Voir
+              </button>
+              <button
+                *ngIf="demande.statut === 'SOUMIS' || demande.statut === 'EN_REVUE'"
+                type="button"
+                class="px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-sm"
+                (click)="validate(demande)"
+              >
+                Approuver
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
