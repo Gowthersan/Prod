@@ -2,6 +2,9 @@
 import { CommonModule, DatePipe } from '@angular/common';
 import { Component, computed, inject, OnDestroy, OnInit, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
+import { DemandeSubventionService } from '../../../services/api/demande-subvention.service';
+import { DemandeSubvention, Activite as ActiviteModel, LigneBudget, Risque as RisqueModel, PieceJointe } from '../../../types/models';
+import { Subscription } from 'rxjs';
 
 type SubmissionStatus = 'BROUILLON' | 'SOUMIS' | 'EN_REVUE' | 'ACCEPTE' | 'REFUSE';
 
@@ -76,6 +79,8 @@ const DRAFT_KEYS = ['fpbg.nc.draft', 'fpbg_submission_v2']; // brouillon (selon 
 })
 export class SubmissionRecap implements OnInit, OnDestroy {
   private route = inject(ActivatedRoute);
+  private demandeService = inject(DemandeSubventionService);
+  private subs = new Subscription();
 
   /** ===== Démo par défaut si rien dans le LS ===== */
   private staticDemo: Submission = {
@@ -298,9 +303,127 @@ export class SubmissionRecap implements OnInit, OnDestroy {
   };
   ngOnInit() {
     document.addEventListener('keydown', this.escHandler);
+    // Try to fetch the live DemandeSubvention from the backend and override the local/demo view
+    const idFromRoute = this.route.snapshot.paramMap.get('id');
+    if (idFromRoute) {
+      if (idFromRoute === 'current') {
+        this.subs.add(
+          this.demandeService.obtenirMesDemandes().subscribe({
+            next: (res) => {
+              const list = res?.data || [];
+              if (list.length > 0) {
+                const first = list[0];
+                this.submission.set(this.mapDemandeToSubmission(first));
+              }
+            },
+            error: () => {
+              // keep local/demo
+            },
+          })
+        );
+      } else {
+        this.subs.add(
+          this.demandeService.obtenirParId(idFromRoute).subscribe({
+            next: (res) => {
+              const d = res?.data;
+              if (d) this.submission.set(this.mapDemandeToSubmission(d));
+            },
+            error: () => {
+              // keep local/demo
+            },
+          })
+        );
+      }
+    }
   }
   ngOnDestroy() {
     document.removeEventListener('keydown', this.escHandler);
+    this.subs.unsubscribe();
+  }
+
+  /** Map backend DemandeSubvention -> Submission (template shape) */
+  private mapDemandeToSubmission(d: DemandeSubvention): Submission {
+    const step1: Step1 = {
+      nom_organisation: d.organisation?.nom || d.organisation?.id || '—',
+      type: d.organisation?.type || '—',
+      contactPerson: d.soumisPar ? `${d.soumisPar.prenom || ''} ${d.soumisPar.nom || ''}`.trim() : '—',
+      // Use request localisation as a fallback for geographic coverage/address
+      geocouvertureGeographique: d.localisation || '—',
+      domains: '',
+      address: d.localisation || '—',
+      contactEmail: d.organisation?.email || d.soumisPar?.email || '—',
+      contactPhone: d.organisation?.telephone || d.soumisPar?.telephone || '—',
+    };
+
+    const step2: Step2 = {
+      title: d.titre || '—',
+      locationAndTarget: `${d.localisation || '—'}${d.groupeCible ? ' — ' + d.groupeCible : ''}`,
+      contextJustification: d.justificationContexte || '—',
+    };
+
+    const step3: Step3 = {
+      objectives: d.objectifs || '—',
+      expectedResults: d.resultatsAttendus || '—',
+      durationMonths: +d.dureeMois || 0,
+    };
+
+    const activities: Activity[] = (d.activites || []).map((a: ActiviteModel) => ({
+      label: a.titre || a.resume || '—',
+      months: undefined,
+    }));
+
+    const risks: Risk[] = (d.risques || []).map((r: RisqueModel) => ({
+      description: r.description || '—',
+      mitigation: r.mitigation || '—',
+    }));
+
+    const budgetLines: BudgetLine[] = [];
+    if (typeof d.terrainCfa === 'number') {
+      budgetLines.push({ category: 'ACTIVITES_TERRAIN', description: 'Activités terrain', total: d.terrainCfa });
+    }
+    if (typeof d.investCfa === 'number') {
+      budgetLines.push({ category: 'INVESTISSEMENTS', description: 'Investissements', total: d.investCfa });
+    }
+    if (typeof d.overheadCfa === 'number') {
+      budgetLines.push({ category: 'FONCTIONNEMENT', description: 'Frais de fonctionnement', total: d.overheadCfa });
+    }
+
+    const attachments: Record<string, string> = {};
+    (d.piecesJointes || []).forEach((p: PieceJointe) => {
+      const key = p.cle || p.nomFichier || p.id;
+      attachments[key as string] = p.url || p.nomFichier || '';
+    });
+
+    // Map status from backend enum to the older SubmissionStatus
+    let status: SubmissionStatus = 'SOUMIS';
+    if (d.statut === 'BROUILLON') status = 'BROUILLON';
+    else if (d.statut === 'EN_REVUE') status = 'EN_REVUE';
+    else if (d.statut === 'APPROUVE') status = 'ACCEPTE';
+    else if (d.statut === 'REJETE') status = 'REFUSE';
+
+    const submission: Submission = {
+      step1,
+      step2,
+      step3,
+      activitiesSummary: d.resumeActivites || '',
+      activities,
+      risks,
+      budgetLines,
+      stateStep: {
+        projectStage: d.stadeProjet || (d.stadeProjet as any) || 'CONCEPTION',
+        hasFunding: !!d.aFinancement,
+        fundingDetails: d.detailsFinancement || '',
+      },
+      sustainabilityStep: {
+        sustainability: d.texteDurabilite || '',
+        replicability: d.texteReplication || '',
+      },
+      attachments,
+      status,
+      updatedAt: d.misAJourLe ? +new Date(d.misAJourLe) : Date.now(),
+    };
+
+    return submission;
   }
 
   /** ===== Stepper d’affichage ===== */
