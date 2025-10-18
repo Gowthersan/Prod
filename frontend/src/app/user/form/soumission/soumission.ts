@@ -26,7 +26,7 @@
 // ============================================================================
 
 import { CommonModule } from '@angular/common';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Component, computed, inject, signal } from '@angular/core';
 
 import {
@@ -380,11 +380,19 @@ export class SubmissionWizard {
     durationMonths: [12, [Validators.required, Validators.min(1), Validators.max(12)]],
   });
 
-  // Force la durée entre 1 et 12 (appelé sur (change) de l'input)
+  // Retourne la durée maximale selon le type de subvention
+  getMaxDuration(): number {
+    const typeSubv = this.typeSubvention();
+    // Si "Moyenne subvention" -> 24 mois, sinon 12 mois
+    return typeSubv.toLowerCase().includes('moyenne') ? 24 : 12;
+  }
+
+  // Force la durée entre 1 et la durée max selon le type de subvention
   clampDuration(): void {
     const ctrl = this.obj.get('durationMonths') as FormControl<number | null>;
     const v = Number(ctrl?.value ?? 0);
-    const clamped = Math.max(1, Math.min(12, isNaN(v) ? 12 : v));
+    const maxDuration = this.getMaxDuration();
+    const clamped = Math.max(1, Math.min(maxDuration, isNaN(v) ? 12 : v));
     if (clamped !== v) ctrl.setValue(clamped);
   }
 
@@ -802,7 +810,7 @@ export class SubmissionWizard {
   }
 
   // Erreur globale si dépassement 10 %
-  private recomputeIndirectCapGlobal(): void {
+  public recomputeIndirectCapGlobal(): void {
     const share = this.indirectShare();
     this.indirectCapError = share > 0.1;
 
@@ -1191,6 +1199,15 @@ export class SubmissionWizard {
   constructor() {
     // Charger les informations utilisateur
     this.loadUserInfo();
+
+    // Mettre à jour la validation de durée selon le type de subvention
+    const maxDuration = this.getMaxDuration();
+    const durationCtrl = this.obj.get('durationMonths');
+    if (durationCtrl) {
+      durationCtrl.setValidators([Validators.required, Validators.min(1), Validators.max(maxDuration)]);
+      durationCtrl.updateValueAndValidity({ emitEvent: false });
+    }
+
     // ---- Paramètre : taux USD (lecture seule côté UI) ----
     const DEFAULT_USD_RATE = 600;
     if (!this.form.get('usdRate')) {
@@ -1458,13 +1475,6 @@ export class SubmissionWizard {
 
   // Soumission du projet
   submit() {
-    // Vérifier les documents obligatoires
-    const missingDocs = this.getMissingRequiredDocuments();
-    if (missingDocs.length > 0) {
-      alert(`Documents obligatoires manquants : ${missingDocs.map((d) => d.label).join(', ')}`);
-      return;
-    }
-
     // Vérifier la validité du formulaire
     if (!this.canGoNext()) {
       this.form.markAllAsTouched();
@@ -1477,12 +1487,70 @@ export class SubmissionWizard {
       return;
     }
 
-    // Préparer les données avec les fichiers
-    const submissionData = this.prepareSubmissionData();
+    // Préparer les données JSON (sans fichiers pour l'instant)
+    const formValue = this.form.getRawValue();
+
+    const projectData = {
+      // Étape 1: Proposition
+      title: formValue.prop?.title || '',
+      domains: formValue.prop?.domains || [],
+      location: formValue.prop?.location || '',
+      targetGroup: formValue.prop?.targetGroup || '',
+      contextJustification: formValue.prop?.contextJustification || '',
+
+      // Étape 2: Objectifs
+      objectives: formValue.obj?.objectives || '',
+      expectedResults: formValue.obj?.expectedResults || '',
+      durationMonths: formValue.obj?.durationMonths || 0,
+
+      // Étape 3: Activités
+      activitiesStartDate: formValue.activitiesHeader?.startDate || '',
+      activitiesEndDate: formValue.activitiesHeader?.endDate || '',
+      activitiesSummary: formValue.activitiesHeader?.summary || '',
+      activities: formValue.activities || [],
+
+      // Étape 4: Risques
+      risks: formValue.risks || [],
+
+      // Étape 5: Budget
+      usdRate: 655,
+      budgetActivities:
+        formValue.activities?.map((act: any, index: number) => ({
+          activityIndex: index,
+          lines: act.budget?.lines || [],
+        })) || [],
+      indirectOverheads: formValue.budget?.overhead || 0,
+
+      // Étape 6: État du projet
+      projectStage: formValue.projectState?.stage || 'CONCEPTION',
+      hasFunding: formValue.projectState?.hasFunding || false,
+      fundingDetails: formValue.projectState?.fundingDetails || '',
+      honorAccepted: formValue.projectState?.honorAccepted || false,
+
+      // Étape 7: Durabilité
+      sustainability: formValue.sustainability?.text || '',
+      replicability: formValue.sustainability?.text || '',
+
+      // Collaborateurs (si présents)
+      collaborateurs: [],
+
+      // Pièces jointes - uniquement les noms des fichiers
+      attachments: this.getUploadedDocuments().map(doc => ({
+        key: doc.key,
+        label: doc.label,
+        fileName: doc.file?.name || '',
+        fileSize: doc.file?.size || 0,
+        fileType: doc.file?.type || '',
+        required: doc.required
+      }))
+    };
 
     // Logs pour debug
-    console.log('📤 Soumission du projet avec les données suivantes :');
-    console.log('- Documents uploadés:', this.getUploadedDocuments().length);
+    console.log('📤 Soumission du projet (JSON uniquement):');
+    console.log('- Titre:', projectData.title);
+    console.log('- Activités:', projectData.activities.length);
+    console.log('- Risques:', projectData.risks.length);
+    console.log('- Documents:', projectData.attachments.length);
 
     // Envoyer au backend via HTTP
     const token = localStorage.getItem('fpbg.token');
@@ -1496,9 +1564,11 @@ export class SubmissionWizard {
     this.isSubmitting.set(true);
     console.log('⏳ Envoi en cours...');
 
+    // Envoi JSON simple (sans fichiers)
     this.http
-      .post(`${environment.urlServer}/api/aprojet-v1/submit`, submissionData, {
+      .post(`${environment.urlServer}/api/demandes/submit-json`, projectData, {
         headers: {
+          'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
       })
@@ -1559,6 +1629,7 @@ export class SubmissionWizard {
   private sanitize(html: string): SafeHtml {
     return this.sanitizer.bypassSecurityTrustHtml(html);
   }
+
   private loadGuides() {
     const guides: string[] = [
       // 0 - Proposition

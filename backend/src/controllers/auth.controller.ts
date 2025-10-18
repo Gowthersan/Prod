@@ -145,6 +145,7 @@ export class AuthController {
       console.log('✅ [LOGIN] Connexion réussie pour:', email);
       console.log('✅ [LOGIN] Type utilisateur:', result.type);
       console.log('✅ [LOGIN] Token généré:', result.token.substring(0, 20) + '...');
+      console.log('📋 [LOGIN] JSON retourné complet:', JSON.stringify(result, null, 2));
 
       // Définir le cookie avec le token
       res.cookie('token', result.token, {

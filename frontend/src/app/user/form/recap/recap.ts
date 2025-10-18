@@ -264,6 +264,7 @@ export class SubmissionRecap implements OnInit, OnDestroy {
   }
 
   submission = signal<Submission | null>(this.loadInitial());
+  isLoading = signal(true);
 
   /** ====== Utils d’affichage ====== */
   status = computed<SubmissionStatus | null>(() => this.submission()?.status ?? null);
@@ -303,9 +304,12 @@ export class SubmissionRecap implements OnInit, OnDestroy {
   };
   ngOnInit() {
     document.addEventListener('keydown', this.escHandler);
+
     // Try to fetch the live DemandeSubvention from the backend and override the local/demo view
     const idFromRoute = this.route.snapshot.paramMap.get('id');
     if (idFromRoute) {
+      this.isLoading.set(true);
+
       if (idFromRoute === 'current') {
         this.subs.add(
           this.demandeService.obtenirMesDemandes().subscribe({
@@ -315,9 +319,11 @@ export class SubmissionRecap implements OnInit, OnDestroy {
                 const first = list[0];
                 this.submission.set(this.mapDemandeToSubmission(first));
               }
+              this.isLoading.set(false);
             },
             error: () => {
               // keep local/demo
+              this.isLoading.set(false);
             },
           })
         );
@@ -327,13 +333,18 @@ export class SubmissionRecap implements OnInit, OnDestroy {
             next: (res) => {
               const d = res?.data;
               if (d) this.submission.set(this.mapDemandeToSubmission(d));
+              this.isLoading.set(false);
             },
             error: () => {
               // keep local/demo
+              this.isLoading.set(false);
             },
           })
         );
       }
+    } else {
+      // Pas d'ID dans la route, pas besoin de charger depuis l'API
+      this.isLoading.set(false);
     }
   }
   ngOnDestroy() {
@@ -377,16 +388,55 @@ export class SubmissionRecap implements OnInit, OnDestroy {
       mitigation: r.mitigation || '—',
     }));
 
+    // Calculer le budget depuis les lignesBudget des activités
     const budgetLines: BudgetLine[] = [];
-    if (typeof d.terrainCfa === 'number') {
-      budgetLines.push({ category: 'ACTIVITES_TERRAIN', description: 'Activités terrain', total: d.terrainCfa });
+    const budgetMap = new Map<string, { total: number; fpbg: number; cofin: number }>();
+
+    // Parcourir toutes les activités et leurs lignes de budget
+    (d.activites || []).forEach((activite: ActiviteModel) => {
+      (activite.lignesBudget || []).forEach((ligne: LigneBudget) => {
+        const montant = Number(ligne.cfa) || 0;
+        const pctFpbg = ligne.pctFpbg || 0;
+        const pctCofin = ligne.pctCofin || 0;
+
+        // Regrouper par type (DIRECT = ACTIVITES_TERRAIN, INDIRECT = FONCTIONNEMENT)
+        const category = ligne.type === 'INDIRECT' ? 'FONCTIONNEMENT' : 'ACTIVITES_TERRAIN';
+        const key = `${category}_${ligne.libelle}`;
+
+        if (!budgetMap.has(key)) {
+          budgetMap.set(key, { total: 0, fpbg: 0, cofin: 0 });
+        }
+
+        const entry = budgetMap.get(key)!;
+        entry.total += montant;
+        entry.fpbg += (montant * pctFpbg) / 100;
+        entry.cofin += (montant * pctCofin) / 100;
+      });
+    });
+
+    // Ajouter les frais indirects
+    const fraisIndirects = Number(d.fraisIndirectsCfa) || 0;
+    if (fraisIndirects > 0) {
+      budgetLines.push({
+        category: 'FONCTIONNEMENT',
+        description: 'Frais indirects',
+        total: fraisIndirects,
+        partFPBG: fraisIndirects,
+        partCofinance: 0
+      });
     }
-    if (typeof d.investCfa === 'number') {
-      budgetLines.push({ category: 'INVESTISSEMENTS', description: 'Investissements', total: d.investCfa });
-    }
-    if (typeof d.overheadCfa === 'number') {
-      budgetLines.push({ category: 'FONCTIONNEMENT', description: 'Frais de fonctionnement', total: d.overheadCfa });
-    }
+
+    // Convertir la Map en array de BudgetLine
+    budgetMap.forEach((value, key) => {
+      const [category, description] = key.split('_');
+      budgetLines.push({
+        category: category as any,
+        description: description || 'Ligne budgétaire',
+        total: value.total,
+        partFPBG: value.fpbg,
+        partCofinance: value.cofin
+      });
+    });
 
     const attachments: Record<string, string> = {};
     (d.piecesJointes || []).forEach((p: PieceJointe) => {

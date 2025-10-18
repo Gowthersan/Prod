@@ -54,11 +54,27 @@ app.use(
 /* -------------------------------------------------------------------------- */
 
 // Gestion de la taille maximale des requêtes
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+// IMPORTANT: Ne pas parser les requêtes multipart/form-data avec express.json/urlencoded
+// car cela interfère avec multer qui gère ces requêtes spécifiquement
+app.use((req, res, next) => {
+  const contentType = req.headers['content-type'] || '';
+
+  // Si c'est du multipart/form-data, ne pas utiliser express.json/urlencoded
+  // Laisser multer gérer ces requêtes
+  if (contentType.includes('multipart/form-data')) {
+    return next();
+  }
+
+  // Pour les autres requêtes, utiliser les parsers standards
+  express.json({ limit: '50mb' })(req, res, (err) => {
+    if (err) return next(err);
+    express.urlencoded({ extended: true, limit: '50mb' })(req, res, next);
+  });
+});
+
 app.use(cookieParser());
 
-// Uploads sécurisés
+// Uploads sécurisés (pour les routes qui n'utilisent pas multer)
 app.use(
   fileUpload({
     limits: { fileSize: 50 * 1024 * 1024 }, // 50 MB

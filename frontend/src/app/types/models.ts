@@ -217,7 +217,7 @@ export interface DemandeSubvention {
   evaluations?: Evaluation[];
   contrat?: Contrat;
   rapports?: Rapport[];
-  cofinanceurs?: Cofinanceur[];
+  // cofinanceurs?: Cofinanceur[];  // COMMENTÉ - Cofinanceur désactivé
 
   // Budget
   tauxUsd: number;
@@ -338,15 +338,16 @@ export interface Rapport {
   misAJourLe: Date | string;
 }
 
-export interface Cofinanceur {
-  id: string;
-  idDemande: string;
-  source: string;
-  montant: number;
-  enNature: boolean;
-  creeLe: Date | string;
-  misAJourLe: Date | string;
-}
+// COMMENTÉ - Interface Cofinanceur désactivée
+// export interface Cofinanceur {
+//   id: string;
+//   idDemande: string;
+//   source: string;
+//   montant: number;
+//   enNature: boolean;
+//   creeLe: Date | string;
+//   misAJourLe: Date | string;
+// }
 
 export interface JournalAudit {
   id: string;

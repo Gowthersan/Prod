@@ -5,6 +5,7 @@ import { v4 as uuidv4 } from 'uuid';
 import demandeSubventionService from '../services/demandeSubvention.service.js';
 import { authenticate } from '../middlewares/auth.middleware.js';
 import { AuthRequest } from '../types/index.js';
+import { sendProjectSubmissionEmails, DemandeData } from '../utils/mail_projet.js';
 
 const router = Router();
 
@@ -48,7 +49,50 @@ const upload = multer({
 });
 
 // ========================================
-// Route principale : Soumission complète du projet
+// Route SIMPLE : Soumission JSON uniquement (sans fichiers)
+// ========================================
+/**
+ * @route   POST /api/demandes/submit-json
+ * @desc    Soumettre un projet complet en JSON (sans fichiers)
+ * @access  Privé (utilisateur authentifié)
+ * @body    JSON avec toutes les données du projet
+ */
+router.post(
+    '/submit-json',
+    authenticate,
+    async (req, res: Response, next: NextFunction) => {
+      try {
+        const authReq = req as AuthRequest;
+        if (!authReq.user) throw new Error('Authentification requise.');
+
+        const idUtilisateur = authReq.user.userId;
+        const projectData = authReq.body;
+
+        console.log('📥 Réception soumission projet (JSON) :');
+        console.log('  - Utilisateur:', idUtilisateur);
+        console.log('  - Titre:', projectData.title);
+
+        // Appeler le service pour créer la demande (sans fichiers)
+        const demande = await demandeSubventionService.soumettre(
+            projectData,
+            {}, // Pas de fichiers
+            [], // Pas d'index de fichiers
+            idUtilisateur
+        );
+
+        res.status(201).json({
+          message: 'Projet soumis avec succès.',
+          data: demande
+        });
+      } catch (error: any) {
+        console.error('❌ Erreur soumission projet:', error);
+        next(error);
+      }
+    }
+);
+
+// ========================================
+// Route avec fichiers : Soumission complète du projet
 // ========================================
 /**
  * @route   POST /api/demandes/submit
@@ -120,6 +164,52 @@ router.post(
             attachmentsIndex,
             idUtilisateur
         );
+
+        // Préparer les données pour l'envoi d'emails
+        try {
+          const emailData: DemandeData = {
+            titre: projectData.title || 'Projet sans titre',
+            organisation: {
+              nom: demande.organisation?.nom || 'Organisation inconnue',
+              email: demande.organisation?.email || null,
+              telephone: demande.organisation?.telephone || null
+            },
+            soumisPar: {
+              nom: demande.utilisateur?.nom || null,
+              prenom: demande.utilisateur?.prenom || null,
+              email: demande.utilisateur?.email || 'email@inconnu.com'
+            },
+            domaines: projectData.domains || [],
+            localisation: projectData.location || 'Non spécifié',
+            groupeCible: projectData.targetGroup || 'Non spécifié',
+            contextJustification: projectData.contextJustification || '',
+            objectifs: projectData.objectives || '',
+            expectedResults: projectData.expectedResults || '',
+            dureeMois: projectData.durationMonths || 12,
+            dateDebutActivites: new Date(projectData.startDate || Date.now()),
+            dateFinActivites: new Date(projectData.endDate || Date.now()),
+            activitiesSummary: projectData.activitiesSummary || '',
+            activites: projectData.activities || [],
+            risques: projectData.risks || [],
+            usdRate: projectData.usdRate || 600,
+            montantTotal: projectData.totalBudget || 0,
+            indirectOverheads: projectData.indirectOverheads || 0,
+            projectStage: projectData.projectStage || 'CONCEPTION',
+            hasFunding: projectData.hasFunding || false,
+            fundingDetails: projectData.fundingDetails || undefined,
+            sustainability: projectData.sustainability || '',
+            replicability: projectData.replicability || undefined,
+            collaborateurs: projectData.collaborators || []
+          };
+
+          // Envoyer les emails de confirmation et notification
+          console.log('📧 Envoi des emails de confirmation...');
+          await sendProjectSubmissionEmails(emailData);
+          console.log('✅ Emails envoyés avec succès');
+        } catch (emailError: any) {
+          // Log l'erreur mais ne bloque pas la soumission
+          console.error('⚠️ Erreur lors de l\'envoi des emails (non bloquant):', emailError.message);
+        }
 
         res.status(201).json({
           message: 'Projet soumis avec succès.',

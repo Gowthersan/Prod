@@ -80,6 +80,16 @@ interface FrontendProjectData {
     telephone?: string;
     role?: string;
   }>;
+
+  // Pièces jointes - uniquement les métadonnées (noms des fichiers)
+  attachments?: Array<{
+    key: string;
+    label: string;
+    fileName: string;
+    fileSize: number;
+    fileType: string;
+    required: boolean;
+  }>;
 }
 
 /**
@@ -102,6 +112,27 @@ export class DemandeSubventionService {
   ) {
     try {
       console.log('🔄 Début de la soumission du projet...');
+      console.log('📊 Données reçues:', {
+        title: data?.title,
+        hasActivities: !!data?.activities,
+        activitiesCount: data?.activities?.length || 0,
+        hasRisks: !!data?.risks,
+        risksCount: data?.risks?.length || 0,
+        filesCount: Object.keys(files || {}).length
+      });
+
+      // ✅ Validation des données essentielles
+      if (!data) {
+        throw new AppError('Aucune donnée de projet fournie.', 400);
+      }
+
+      if (!data.title || data.title.trim() === '') {
+        throw new AppError('Le titre du projet est requis.', 400);
+      }
+
+      if (!data.activitiesStartDate || !data.activitiesEndDate) {
+        throw new AppError('Les dates de début et fin des activités sont requises.', 400);
+      }
 
       // 1️⃣ Vérifier que l'utilisateur existe et récupérer son organisation
       const utilisateur = await prisma.utilisateur.findUnique({
@@ -155,9 +186,9 @@ export class DemandeSubventionService {
             // ========================================
             // Étape 3 - Activités (dates et résumé uniquement)
             // ========================================
-            dateDebutActivites: new Date(data.activitiesStartDate),
-            dateFinActivites: new Date(data.activitiesEndDate),
-            resumeActivites: data.activitiesSummary,
+            dateDebutActivites: data.activitiesStartDate ? new Date(data.activitiesStartDate) : new Date(),
+            dateFinActivites: data.activitiesEndDate ? new Date(data.activitiesEndDate) : new Date(),
+            resumeActivites: data.activitiesSummary || '',
 
             // ========================================
             // Étape 5 - Budget
@@ -186,14 +217,39 @@ export class DemandeSubventionService {
         // ========================================
         // B) Créer les activités avec relations imbriquées
         // ========================================
-        if (data.activities && data.activities.length > 0) {
+        if (data.activities && Array.isArray(data.activities) && data.activities.length > 0) {
+          console.log(`🔄 Création de ${data.activities.length} activité(s)...`);
+
           for (let i = 0; i < data.activities.length; i++) {
             const act = data.activities[i];
 
-            // Vérifier que l'activité existe
-            if (!act) {
-              console.warn(`⚠️ Activité ${i} manquante`);
+            // Vérifier que l'activité existe et a des données valides
+            if (!act || !act.title) {
+              console.warn(`⚠️ Activité ${i} manquante ou invalide, ignorée`);
               continue;
+            }
+
+            // Valider et parser les dates de l'activité
+            let dateDebut: Date;
+            let dateFin: Date;
+
+            try {
+              dateDebut = act.start ? new Date(act.start) : new Date(data.activitiesStartDate);
+              dateFin = act.end ? new Date(act.end) : new Date(data.activitiesEndDate);
+
+              // Vérifier que les dates sont valides
+              if (isNaN(dateDebut.getTime())) {
+                console.warn(`⚠️ Date de début invalide pour activité ${i}, utilisation de la date du projet`);
+                dateDebut = new Date(data.activitiesStartDate);
+              }
+              if (isNaN(dateFin.getTime())) {
+                console.warn(`⚠️ Date de fin invalide pour activité ${i}, utilisation de la date du projet`);
+                dateFin = new Date(data.activitiesEndDate);
+              }
+            } catch (error) {
+              console.warn(`⚠️ Erreur parsing dates activité ${i}:`, error);
+              dateDebut = new Date(data.activitiesStartDate);
+              dateFin = new Date(data.activitiesEndDate);
             }
 
             // Créer l'activité principale
@@ -201,10 +257,10 @@ export class DemandeSubventionService {
               data: {
                 idDemande: nouveleDemande.id,
                 ordre: i,
-                titre: act.title,
-                debut: new Date(act.start),
-                fin: new Date(act.end),
-                resume: act.summary
+                titre: act.title.trim(),
+                debut: dateDebut,
+                fin: dateFin,
+                resume: act.summary || ''
               }
             });
 
@@ -234,29 +290,50 @@ export class DemandeSubventionService {
             }
 
             // Créer les lignes de budget si présentes
-            if (act.budget && act.budget.lines && act.budget.lines.length > 0) {
+            if (act.budget && act.budget.lines && Array.isArray(act.budget.lines) && act.budget.lines.length > 0) {
+              let lignesCreees = 0;
+
               for (let k = 0; k < act.budget.lines.length; k++) {
                 const line = act.budget.lines[k];
 
-                // Vérifier que la ligne de budget existe
-                if (!line) {
-                  console.warn(`⚠️ Ligne de budget ${k} manquante`);
+                // Vérifier que la ligne de budget existe et a des données valides
+                if (!line || !line.label) {
+                  console.warn(`⚠️ Ligne de budget ${k} manquante ou invalide, ignorée`);
                   continue;
                 }
 
-                await tx.ligneBudget.create({
-                  data: {
-                    idActivite: activiteCreee.id,
-                    ordre: k,
-                    libelle: line.label,
-                    type: 'DIRECT',
-                    cfa: new Prisma.Decimal(line.cfa),
-                    pctFpbg: line.fpbgPct,
-                    pctCofin: line.cofinPct
-                  }
-                });
+                // Valider les montants
+                const montantCfa = Number(line.cfa) || 0;
+                const pctFpbg = Number(line.fpbgPct) || 0;
+                const pctCofin = Number(line.cofinPct) || 0;
+
+                // Vérifier que les pourcentages sont valides (0-100)
+                if (pctFpbg < 0 || pctFpbg > 100) {
+                  console.warn(`⚠️ Pourcentage FPBG invalide (${pctFpbg}) pour ligne "${line.label}", ajusté à 0`);
+                }
+                if (pctCofin < 0 || pctCofin > 100) {
+                  console.warn(`⚠️ Pourcentage cofinancement invalide (${pctCofin}) pour ligne "${line.label}", ajusté à 0`);
+                }
+
+                try {
+                  await tx.ligneBudget.create({
+                    data: {
+                      idActivite: activiteCreee.id,
+                      ordre: k,
+                      libelle: line.label.trim(),
+                      type: 'DIRECT',
+                      cfa: new Prisma.Decimal(montantCfa),
+                      pctFpbg: Math.max(0, Math.min(100, pctFpbg)),
+                      pctCofin: Math.max(0, Math.min(100, pctCofin))
+                    }
+                  });
+                  lignesCreees++;
+                } catch (error: any) {
+                  console.error(`❌ Erreur création ligne budget ${k}:`, error.message);
+                  // Continue avec les autres lignes
+                }
               }
-              console.log(`    ✅ ${act.budget.lines.length} ligne(s) de budget créée(s)`);
+              console.log(`    ✅ ${lignesCreees}/${act.budget.lines.length} ligne(s) de budget créée(s)`);
             }
           }
         }
@@ -287,84 +364,89 @@ export class DemandeSubventionService {
         }
 
         // ========================================
-        // D) Créer les pièces jointes
+        // D) Créer les pièces jointes (métadonnées uniquement - pas de fichiers réels)
         // ========================================
-        if (files && Object.keys(files).length > 0) {
-          for (const [fieldName, fileArray] of Object.entries(files)) {
-            if (fileArray && fileArray.length > 0) {
-              const file = fileArray[0];
+        if (data.attachments && Array.isArray(data.attachments) && data.attachments.length > 0) {
+          console.log(`🔄 Enregistrement de ${data.attachments.length} pièce(s) jointe(s) (métadonnées)...`);
+          let fichiersCreees = 0;
 
-              // Vérifier que le fichier existe
-              if (!file) {
-                console.warn(`⚠️ Fichier manquant pour le champ: ${fieldName}`);
+          // Clés valides pour les documents
+          const validKeys = [
+            'LETTRE_MOTIVATION',
+            'CV',
+            'CERTIFICAT_ENREGISTREMENT',
+            'STATUTS_REGLEMENT',
+            'PV_ASSEMBLEE',
+            'RAPPORTS_FINANCIERS',
+            'RCCM',
+            'AGREMENT',
+            'ETATS_FINANCIERS',
+            'DOCUMENTS_STATUTAIRES',
+            'RIB',
+            'LETTRES_SOUTIEN',
+            'PREUVE_NON_FAILLITE',
+            'CARTOGRAPHIE',
+            'FICHE_CIRCUIT',
+            'BUDGET_DETAILLE',
+            'CHRONOGRAMME'
+          ];
+
+          for (const attachment of data.attachments) {
+            try {
+              // Vérifier que l'attachement a les propriétés requises
+              if (!attachment || !attachment.key || !attachment.fileName) {
+                console.warn(`⚠️ Pièce jointe invalide, ignorée`);
                 continue;
               }
 
-              // Extraire la clé du document (ex: "attachment_LETTRE_MOTIVATION" -> "LETTRE_MOTIVATION")
-              const documentKey = fieldName.replace('attachment_', '');
-
-              // Vérifier que la clé est valide (existe dans l'enum CleDocument)
-              const validKeys = [
-                'LETTRE_MOTIVATION',
-                'CV',
-                'CERTIFICAT_ENREGISTREMENT',
-                'STATUTS_REGLEMENT',
-                'PV_ASSEMBLEE',
-                'RAPPORTS_FINANCIERS',
-                'RCCM',
-                'AGREMENT',
-                'ETATS_FINANCIERS',
-                'DOCUMENTS_STATUTAIRES',
-                'RIB',
-                'LETTRES_SOUTIEN',
-                'PREUVE_NON_FAILLITE',
-                'CARTOGRAPHIE',
-                'FICHE_CIRCUIT',
-                'BUDGET_DETAILLE',
-                'CHRONOGRAMME'
-              ];
-
-              if (!validKeys.includes(documentKey)) {
-                console.warn(`⚠️ Clé de document invalide: ${documentKey}`);
+              // Vérifier que la clé est valide
+              if (!validKeys.includes(attachment.key)) {
+                console.warn(`⚠️ Clé de document invalide: ${attachment.key}, ignoré`);
                 continue;
               }
 
-              // Trouver les métadonnées dans attachmentsIndex
-              const metadata = attachmentsIndex.find((att) => att.key === documentKey);
-
+              // Créer la pièce jointe avec les métadonnées uniquement
               await tx.pieceJointe.create({
                 data: {
                   idDemande: nouveleDemande.id,
-                  cle: documentKey as any,
-                  nomFichier: file.originalname,
-                  typeMime: file.mimetype,
-                  tailleOctets: file.size,
-                  cleStockage: file.path, // Chemin complet sur le serveur
-                  url: `/uploads/projets/${file.filename}`, // URL publique
-                  requis: metadata?.required || false
+                  cle: attachment.key as any,
+                  nomFichier: attachment.fileName.trim(),
+                  typeMime: attachment.fileType || 'application/pdf',
+                  tailleOctets: attachment.fileSize || 0,
+                  cleStockage: attachment.fileName, // Nom du fichier uniquement
+                  url: '', // Pas d'URL pour l'instant
+                  requis: attachment.required || false
                 }
               });
+
+              fichiersCreees++;
+              console.log(`  ✅ Document "${attachment.fileName}" enregistré (${attachment.key})`);
+            } catch (error: any) {
+              console.error(`❌ Erreur enregistrement document ${attachment.key}:`, error.message);
+              // Continue avec les autres fichiers
             }
           }
-          console.log(`✅ ${Object.keys(files).length} pièce(s) jointe(s) uploadée(s)`);
+          console.log(`✅ ${fichiersCreees}/${data.attachments.length} pièce(s) jointe(s) enregistrée(s)`);
+        } else {
+          console.log('ℹ️  Aucune pièce jointe fournie');
         }
 
         // ========================================
-        // E) Gérer les cofinanceurs (collaborateurs)
+        // E) Gérer les cofinanceurs (collaborateurs) - COMMENTÉ
         // ========================================
-        if (data.collaborateurs && data.collaborateurs.length > 0) {
-          for (const collab of data.collaborateurs) {
-            await tx.cofinanceur.create({
-              data: {
-                idDemande: nouveleDemande.id,
-                source: `${collab.prenom} ${collab.nom} (${collab.email})`,
-                montant: new Prisma.Decimal(0), // Montant à définir plus tard
-                enNature: false
-              }
-            });
-          }
-          console.log(`✅ ${data.collaborateurs.length} collaborateur(s) enregistré(s)`);
-        }
+        // if (data.collaborateurs && data.collaborateurs.length > 0) {
+        //   for (const collab of data.collaborateurs) {
+        //     await tx.cofinanceur.create({
+        //       data: {
+        //         idDemande: nouveleDemande.id,
+        //         source: `${collab.prenom} ${collab.nom} (${collab.email})`,
+        //         montant: new Prisma.Decimal(0), // Montant à définir plus tard
+        //         enNature: false
+        //       }
+        //     });
+        //   }
+        //   console.log(`✅ ${data.collaborateurs.length} collaborateur(s) enregistré(s)`);
+        // }
 
         // Retourner la demande complète avec toutes les relations
         return tx.demandeSubvention.findUnique({
@@ -389,8 +471,8 @@ export class DemandeSubventionService {
             risques: {
               orderBy: { ordre: 'asc' }
             },
-            piecesJointes: true,
-            cofinanceurs: true
+            piecesJointes: true
+            // cofinanceurs: true  // COMMENTÉ - Cofinanceur désactivé
           }
         });
       }, { timeout: 25000 });
@@ -427,22 +509,28 @@ export class DemandeSubventionService {
             dateDebutActivites: demande.dateDebutActivites,
             dateFinActivites: demande.dateFinActivites,
             activitiesSummary: demande.resumeActivites,
-            activites: demande.activites?.map(act => ({
-              titre: act.titre,
-              start: act.debut?.toISOString().split('T')[0] || new Date().toISOString().split('T')[0],
-              end: act.fin?.toISOString().split('T')[0] || new Date().toISOString().split('T')[0],
-              resume: act.resume,
-              subs: act.sousActivites?.map(sub => ({
-                label: sub.libelle,
-                summary: sub.resume || undefined
-              })) || [],
-              lignesBudget: act.lignesBudget?.map(ligne => ({
-                libelle: ligne.libelle,
-                cfa: ligne.cfa,
-                fpbgPct: ligne.pctFpbg,
-                cofinPct: ligne.pctCofin
-              })) || []
-            })),
+            activites: demande.activites?.map(act => {
+              // Garantir que start et end sont toujours des strings non-nullables
+              const startDate = act.debut instanceof Date ? act.debut : new Date();
+              const endDate = act.fin instanceof Date ? act.fin : new Date();
+
+              return {
+                titre: act.titre,
+                start: startDate.toISOString().split('T')[0],
+                end: endDate.toISOString().split('T')[0],
+                resume: act.resume,
+                subs: act.sousActivites?.map(sub => ({
+                  label: sub.libelle,
+                  summary: sub.resume || undefined
+                })) || [],
+                lignesBudget: act.lignesBudget?.map(ligne => ({
+                  libelle: ligne.libelle,
+                  cfa: Number(ligne.cfa), // Convertir Decimal en number pour le JSON
+                  fpbgPct: ligne.pctFpbg,
+                  cofinPct: ligne.pctCofin
+                })) || []
+              };
+            }),
             risques: demande.risques?.map(r => ({
               description: r.description,
               mitigation: r.mitigation
@@ -480,19 +568,54 @@ export class DemandeSubventionService {
 
       return demande;
     } catch (error: any) {
-      console.error('❌ Erreur lors de la soumission:', error);
+      console.error('\n❌ =============================================');
+      console.error('❌ ERREUR LORS DE LA SOUMISSION');
+      console.error('❌ =============================================');
+      console.error('Type d\'erreur:', error.constructor?.name);
+      console.error('Message:', error.message);
+      console.error('Stack:', error.stack);
 
       // Si c'est une erreur Prisma, la rendre plus lisible
       if (error.code) {
+        console.error('Code Prisma:', error.code);
+
         if (error.code === 'P2002') {
-          throw new AppError('Un doublon a été détecté (contrainte unique violée).', 400);
+          const target = error.meta?.target;
+          throw new AppError(
+            `Un doublon a été détecté. Un projet avec ces informations existe déjà (champs: ${target}).`,
+            400
+          );
         }
         if (error.code === 'P2003') {
-          throw new AppError('Référence invalide (clé étrangère).', 400);
+          const field = error.meta?.field_name;
+          throw new AppError(`Référence invalide pour le champ: ${field}.`, 400);
+        }
+        if (error.code === 'P2025') {
+          throw new AppError('Enregistrement requis non trouvé.', 404);
+        }
+        if (error.code === 'P1001') {
+          throw new AppError('Impossible de se connecter à la base de données.', 500);
+        }
+        if (error.code === 'P1008') {
+          throw new AppError('Timeout de la base de données - opération trop longue.', 504);
         }
       }
 
-      throw new AppError('Erreur lors de la soumission du projet: ' + error.message, error.statusCode || 500);
+      // Si c'est déjà une AppError, la relancer
+      if (error instanceof AppError) {
+        throw error;
+      }
+
+      // Erreur de validation de données
+      if (error.message?.includes('Invalid') || error.message?.includes('required')) {
+        throw new AppError('Données invalides: ' + error.message, 400);
+      }
+
+      // Erreur générique avec le message complet
+      throw new AppError(
+        'Erreur lors de la soumission du projet: ' + (error.message || 'Erreur inconnue'),
+        error.statusCode || 500
+      );
     }
   }
 
@@ -877,8 +1000,8 @@ export class DemandeSubventionService {
           contrat: true,
           rapports: {
             orderBy: { dateEcheance: 'asc' }
-          },
-          cofinanceurs: true
+          }
+          // cofinanceurs: true  // COMMENTÉ - Cofinanceur désactivé
         }
       });
 

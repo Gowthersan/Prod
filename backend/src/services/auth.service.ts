@@ -249,6 +249,15 @@ export class AuthService {
         // ====================================
         const result = await prisma.$transaction(async (tx) => {
           // ÉTAPE 1: Créer l'Utilisateur en premier
+          console.log('📝 [INSCRIPTION ORG] Données reçues:', {
+            email: registrationData.email,
+            prenom: registrationData.prenom,
+            nom: registrationData.nom,
+            personneContact: registrationData.personneContact,
+            telephone: registrationData.telephone,
+            telephoneContact: registrationData.telephoneContact
+          });
+
           const user = await tx.utilisateur.create({
             data: {
               email: registrationData.email,
@@ -258,6 +267,14 @@ export class AuthService {
               telephone: registrationData.telephone ?? registrationData.telephoneContact ?? null,
               role: 'UTILISATEUR'
             }
+          });
+
+          console.log('✅ [INSCRIPTION ORG] Utilisateur créé:', {
+            id: user.id,
+            email: user.email,
+            prenom: user.prenom,
+            nom: user.nom,
+            telephone: user.telephone
           });
 
           // ÉTAPE 2: Mapper le type d'organisation vers l'enum TypeOrganisation
@@ -389,10 +406,16 @@ export class AuthService {
         email: user.email,
         role: user.role,
         type: user.organisation ? 'organisation' : 'user',
-        redirectTo
+        redirectTo,
+        prenom: user.prenom,
+        nom: user.nom,
+        organisation: user.organisation ? {
+          nom: user.organisation.nom,
+          typeSubvention: user.organisation.typeSubvention
+        } : null
       });
 
-      return {
+      const responseData = {
         message: 'Connexion réussie.',
         token,
         user: serializeBigInt(userWithoutSensitiveData), // 🎯 Sérialiser les BigInt
@@ -400,6 +423,10 @@ export class AuthService {
         role: user.role, // ✅ Ajouter le rôle dans la réponse
         redirectTo // ✅ Ajouter la redirection basée sur le rôle
       };
+
+      console.log('📋 [AUTH SERVICE] Données de réponse complètes:', JSON.stringify(responseData, null, 2));
+
+      return responseData;
     }
 
     throw new AppError('Email ou mot de passe incorrect.', 401);

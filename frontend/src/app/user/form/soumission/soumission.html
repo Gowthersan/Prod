@@ -2,7 +2,9 @@
 <div class="min-h-screen p-2 sm:p-3 md:p-4 lg:p-6 bg-slate-50">
   <!-- HEADER -->
   <header class="bg-white border-b border-slate-200">
-    <div class="flex flex-col min-[600px]:flex-row items-start min-[600px]:items-center justify-between w-full gap-2 min-[600px]:gap-3 lg:gap-4 px-2 sm:px-3 md:px-4 lg:px-6 py-2 sm:py-3 md:py-4">
+    <div
+      class="flex flex-col min-[600px]:flex-row items-start min-[600px]:items-center justify-between w-full gap-2 min-[600px]:gap-3 lg:gap-4 px-2 sm:px-3 md:px-4 lg:px-6 py-2 sm:py-3 md:py-4"
+    >
       <!-- À gauche -->
       <div class="min-w-0 flex-1 min-[600px]:flex-initial">
         <div class="text-[0.75rem] min-[400px]:text-[0.8125rem] sm:text-sm text-slate-500">
@@ -24,17 +26,31 @@
       </div>
 
       <!-- À droite -->
-      <div class="flex flex-col min-[500px]:flex-row items-start min-[500px]:items-center gap-1 min-[500px]:gap-2 sm:gap-3 md:gap-4 lg:gap-6 shrink-0 w-full min-[600px]:w-auto">
-        <div class="flex items-center gap-1 sm:gap-2 text-[0.625rem] min-[400px]:text-[0.6875rem] sm:text-xs text-slate-500">
+      <div
+        class="flex flex-col min-[500px]:flex-row items-start min-[500px]:items-center gap-1 min-[500px]:gap-2 sm:gap-3 md:gap-4 lg:gap-6 shrink-0 w-full min-[600px]:w-auto"
+      >
+        <div
+          class="flex items-center gap-1 sm:gap-2 text-[0.625rem] min-[400px]:text-[0.6875rem] sm:text-xs text-slate-500"
+        >
           <span class="i-lucide-save -mt-0.5 text-[0.75rem] sm:text-sm"></span>
           <span class="hidden min-[400px]:inline">Sauvegardé</span>
           <span class="min-[400px]:hidden">Save</span>
           <span class="font-semibold text-slate-700">{{ lastSaved() }}</span>
         </div>
 
-        <div class="px-2 min-[400px]:px-2.5 sm:px-3 md:px-4 py-1 min-[400px]:py-1.5 sm:py-2 text-right border rounded-md border-slate-200 flex-1 min-[500px]:flex-initial min-w-0">
-          <div class="text-[0.625rem] min-[400px]:text-[0.6875rem] sm:text-xs tracking-wide uppercase text-slate-500">Montant</div>
-          <div class="text-[0.75rem] min-[400px]:text-[0.8125rem] sm:text-sm font-semibold text-slate-800">{{ montantRange() }}</div>
+        <div
+          class="px-2 min-[400px]:px-2.5 sm:px-3 md:px-4 py-1 min-[400px]:py-1.5 sm:py-2 text-right border rounded-md border-slate-200 flex-1 min-[500px]:flex-initial min-w-0"
+        >
+          <div
+            class="text-[0.625rem] min-[400px]:text-[0.6875rem] sm:text-xs tracking-wide uppercase text-slate-500"
+          >
+            Montant
+          </div>
+          <div
+            class="text-[0.75rem] min-[400px]:text-[0.8125rem] sm:text-sm font-semibold text-slate-800"
+          >
+            {{ montantRange() }}
+          </div>
           <div class="text-[0.625rem] min-[400px]:text-[0.6875rem] sm:text-xs text-slate-500">
             <span class="hidden min-[400px]:inline">Durée max:</span>
             <span class="min-[400px]:hidden">Max:</span> {{ dureeMax() }}
@@ -46,7 +62,9 @@
 
   <!-- LAYOUT -->
   <div class="mx-auto bg-white border border-slate-200">
-    <div class="grid grid-cols-1 min-[768px]:grid-cols-[200px_1fr] min-[900px]:grid-cols-[220px_1fr] min-[1024px]:grid-cols-[240px_1fr] min-[1280px]:grid-cols-[260px_1fr_300px] min-[1536px]:grid-cols-[280px_1fr_320px] divide-x divide-slate-200">
+    <div
+      class="grid grid-cols-1 min-[768px]:grid-cols-[200px_1fr] min-[900px]:grid-cols-[220px_1fr] min-[1024px]:grid-cols-[240px_1fr] min-[1280px]:grid-cols-[260px_1fr_300px] min-[1536px]:grid-cols-[280px_1fr_320px] divide-x divide-slate-200"
+    >
       <!-- COLONNE GAUCHE : Étapes & navigation -->
       <aside class="p-2 min-[400px]:p-2.5 sm:p-3 md:p-4 lg:p-5">
         <!-- Retour dashboard -->
@@ -66,19 +84,29 @@
           >
             <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
           </svg>
-          <span class="ml-1 min-[400px]:ml-1.5 sm:ml-2 text-[0.625rem] min-[400px]:text-[0.6875rem] sm:text-xs md:text-sm font-medium">
+          <span
+            class="ml-1 min-[400px]:ml-1.5 sm:ml-2 text-[0.625rem] min-[400px]:text-[0.6875rem] sm:text-xs md:text-sm font-medium"
+          >
             <span class="hidden min-[480px]:inline">Accéder à mon</span>
             <span class="min-[480px]:hidden">Mon</span> dashboard
           </span>
         </button>
 
-        <h3 class="mt-2 min-[400px]:mt-3 sm:mt-4 text-[0.625rem] min-[400px]:text-[0.6875rem] sm:text-xs font-semibold tracking-wide text-slate-500">Progression</h3>
-        <div class="flex items-center justify-between mt-1 sm:mt-2 text-[0.625rem] min-[400px]:text-[0.6875rem] sm:text-xs text-slate-600">
+        <h3
+          class="mt-2 min-[400px]:mt-3 sm:mt-4 text-[0.625rem] min-[400px]:text-[0.6875rem] sm:text-xs font-semibold tracking-wide text-slate-500"
+        >
+          Progression
+        </h3>
+        <div
+          class="flex items-center justify-between mt-1 sm:mt-2 text-[0.625rem] min-[400px]:text-[0.6875rem] sm:text-xs text-slate-600"
+        >
           <span class="sr-only">Progression</span>
           <span></span>
           <span class="font-semibold">{{ progress() }}%</span>
         </div>
-        <div class="h-1.5 min-[400px]:h-1.5 sm:h-2 mt-0.5 sm:mt-1 overflow-hidden rounded-full bg-slate-200">
+        <div
+          class="h-1.5 min-[400px]:h-1.5 sm:h-2 mt-0.5 sm:mt-1 overflow-hidden rounded-full bg-slate-200"
+        >
           <div class="h-full bg-[#16a34a] transition-all" [style.width.%]="progress()"></div>
         </div>
 
@@ -95,11 +123,15 @@
                 : 'bg-white text-slate-800 border-slate-200'
             "
           >
-            <span class="text-[0.625rem] min-[400px]:text-[0.6875rem] sm:text-xs md:text-sm">{{ i + 1 }}. {{ s }}</span>
+            <span class="text-[0.625rem] min-[400px]:text-[0.6875rem] sm:text-xs md:text-sm"
+              >{{ i + 1 }}. {{ s }}</span
+            >
           </div>
         </nav>
 
-        <div class="flex flex-col min-[480px]:flex-row gap-1 min-[400px]:gap-2 sm:gap-3 mt-3 min-[400px]:mt-4 sm:mt-5 md:mt-6">
+        <div
+          class="flex flex-col min-[480px]:flex-row gap-1 min-[400px]:gap-2 sm:gap-3 mt-3 min-[400px]:mt-4 sm:mt-5 md:mt-6"
+        >
           <button
             class="px-2 min-[400px]:px-3 sm:px-4 py-1 min-[400px]:py-1.5 sm:py-2 bg-white border rounded-md sm:rounded-lg border-slate-300 text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-300 text-[0.625rem] min-[400px]:text-[0.6875rem] sm:text-xs md:text-sm"
             (click)="prev()"
@@ -123,15 +155,28 @@
         <!-- =========================
              ÉTAPE 1 : PROPOSITION
              ========================= -->
-        <div *ngIf="current() === 0" [formGroup]="stepProp" class="space-y-3 min-[400px]:space-y-4 sm:space-y-5">
-          <h2 class="text-[0.875rem] min-[400px]:text-[0.9375rem] sm:text-base md:text-lg lg:text-xl xl:text-[20px] leading-5 sm:leading-6 font-semibold text-slate-900 mb-2 min-[400px]:mb-3 sm:mb-4">
+        <div
+          *ngIf="current() === 0"
+          [formGroup]="stepProp"
+          class="space-y-3 min-[400px]:space-y-4 sm:space-y-5"
+        >
+          <h2
+            class="text-[0.875rem] min-[400px]:text-[0.9375rem] sm:text-base md:text-lg lg:text-xl xl:text-[20px] leading-5 sm:leading-6 font-semibold text-slate-900 mb-2 min-[400px]:mb-3 sm:mb-4"
+          >
             Proposition de Projet
           </h2>
 
           <!-- Titre -->
           <div>
-            <label class="block mb-0.5 sm:mb-1 text-[0.625rem] min-[400px]:text-[0.6875rem] sm:text-xs md:text-sm font-medium">Titre du projet</label>
-            <input type="text" class="w-full px-2 min-[400px]:px-2.5 sm:px-3 py-1 min-[400px]:py-1.5 sm:py-2 border rounded-md text-[0.75rem] min-[400px]:text-[0.8125rem] sm:text-sm" formControlName="title" />
+            <label
+              class="block mb-0.5 sm:mb-1 text-[0.625rem] min-[400px]:text-[0.6875rem] sm:text-xs md:text-sm font-medium"
+              >Titre du projet</label
+            >
+            <input
+              type="text"
+              class="w-full px-2 min-[400px]:px-2.5 sm:px-3 py-1 min-[400px]:py-1.5 sm:py-2 border rounded-md text-[0.75rem] min-[400px]:text-[0.8125rem] sm:text-sm"
+              formControlName="title"
+            />
           </div>
 
           <!-- Domaines -->
@@ -255,17 +300,19 @@
             <input
               type="number"
               min="1"
-              max="12"
+              [max]="getMaxDuration()"
               class="w-full px-3 py-2 border rounded-md"
               formControlName="durationMonths"
               (change)="clampDuration()"
             />
-            <div class="mt-1 text-xs text-slate-500">Valeur autorisée : 1 à 12 mois.</div>
+            <div class="mt-1 text-xs text-slate-500">
+              Valeur autorisée : 1 à {{ getMaxDuration() }} mois.
+            </div>
             <div
               class="mt-1 text-xs text-rose-600"
               *ngIf="obj.get('durationMonths')?.errors?.['max']"
             >
-              La durée ne peut pas dépasser <b>12 mois</b>.
+              La durée ne peut pas dépasser <b>{{ getMaxDuration() }} mois</b>.
             </div>
             <div
               class="mt-1 text-xs text-rose-600"
@@ -615,7 +662,7 @@
         <!-- =================================
              ÉTAPE 5 : ESTIMATION DU BUDGET
              ================================= -->
-        <div *ngIf="current() === 4" class="space-y-5 w-full max-w-full" style="overflow-x: hidden;">
+        <div *ngIf="current() === 4" class="space-y-5 w-full max-w-full" style="overflow-x: hidden">
           <h2 class="text-lg sm:text-xl md:text-[20px] leading-6 font-semibold text-slate-900 mb-4">
             Estimation du budget (par activité)
           </h2>
@@ -685,7 +732,9 @@
 
           <!-- Tableau Budget de l'activité sélectionnée -->
           <ng-container *ngIf="selectedBudgetActivity !== null">
-            <div class="p-2 sm:p-3 md:p-4 mt-4 bg-white border rounded-md shadow-sm border-slate-200 w-full">
+            <div
+              class="p-2 sm:p-3 md:p-4 mt-4 bg-white border rounded-md shadow-sm border-slate-200 w-full"
+            >
               <div class="flex items-center justify-between mb-3">
                 <h4 class="text-sm font-semibold text-slate-800">
                   Budget —
@@ -707,18 +756,54 @@
 
               <div [formGroup]="activities.at(selectedBudgetActivity!)" class="w-full">
                 <div formGroupName="budget" class="w-full">
-                  <div formArrayName="lines" class="w-full overflow-x-auto overflow-y-hidden border rounded-lg max-w-full budget-scroll" style="max-width: 100%;">
-                    <table class="w-full text-sm" style="min-width: 700px;">
+                  <div
+                    formArrayName="lines"
+                    class="w-full overflow-x-auto overflow-y-hidden border rounded-lg max-w-full budget-scroll"
+                    style="max-width: 100%"
+                  >
+                    <table class="w-full text-sm" style="min-width: 700px">
                       <thead>
                         <tr class="text-left border-b text-slate-600 bg-slate-50">
-                          <th class="py-1.5 sm:py-2 pr-1 sm:pr-2 text-[10px] sm:text-xs font-semibold sticky left-0 bg-slate-50 z-10">Désignation</th>
-                          <th class="py-1.5 sm:py-2 pr-1 sm:pr-2 text-[10px] sm:text-xs font-semibold">Coût (FCFA)</th>
-                          <th class="py-1.5 sm:py-2 pr-1 sm:pr-2 text-[10px] sm:text-xs font-semibold">USD</th>
-                          <th class="py-1.5 sm:py-2 pr-1 sm:pr-2 text-[10px] sm:text-xs font-semibold">FPBG (%)</th>
-                          <th class="py-1.5 sm:py-2 pr-1 sm:pr-2 text-[10px] sm:text-xs font-semibold">FPBG (FCFA)</th>
-                          <th class="py-1.5 sm:py-2 pr-1 sm:pr-2 text-[10px] sm:text-xs font-semibold">Cofin. (%)</th>
-                          <th class="py-1.5 sm:py-2 pr-1 sm:pr-2 text-[10px] sm:text-xs font-semibold">Cofin. (FCFA)</th>
-                          <th class="py-1.5 sm:py-2 text-right text-[10px] sm:text-xs font-semibold">Action</th>
+                          <th
+                            class="py-1.5 sm:py-2 pr-1 sm:pr-2 text-[10px] sm:text-xs font-semibold sticky left-0 bg-slate-50 z-10"
+                          >
+                            Désignation
+                          </th>
+                          <th
+                            class="py-1.5 sm:py-2 pr-1 sm:pr-2 text-[10px] sm:text-xs font-semibold"
+                          >
+                            Coût (FCFA)
+                          </th>
+                          <th
+                            class="py-1.5 sm:py-2 pr-1 sm:pr-2 text-[10px] sm:text-xs font-semibold"
+                          >
+                            USD
+                          </th>
+                          <th
+                            class="py-1.5 sm:py-2 pr-1 sm:pr-2 text-[10px] sm:text-xs font-semibold"
+                          >
+                            FPBG (%)
+                          </th>
+                          <th
+                            class="py-1.5 sm:py-2 pr-1 sm:pr-2 text-[10px] sm:text-xs font-semibold"
+                          >
+                            FPBG (FCFA)
+                          </th>
+                          <th
+                            class="py-1.5 sm:py-2 pr-1 sm:pr-2 text-[10px] sm:text-xs font-semibold"
+                          >
+                            Cofin. (%)
+                          </th>
+                          <th
+                            class="py-1.5 sm:py-2 pr-1 sm:pr-2 text-[10px] sm:text-xs font-semibold"
+                          >
+                            Cofin. (FCFA)
+                          </th>
+                          <th
+                            class="py-1.5 sm:py-2 text-right text-[10px] sm:text-xs font-semibold"
+                          >
+                            Action
+                          </th>
                         </tr>
                       </thead>
                       <tbody>
@@ -731,7 +816,7 @@
                           "
                           [formGroupName]="j"
                         >
-                          <td class="py-2 pr-2" style="min-width: 150px;">
+                          <td class="py-2 pr-2" style="min-width: 150px">
                             <input
                               formControlName="label"
                               type="text"
@@ -740,7 +825,7 @@
                             />
                           </td>
 
-                          <td class="py-2 pr-2" style="min-width: 120px;">
+                          <td class="py-2 pr-2" style="min-width: 120px">
                             <input
                               formControlName="cfa"
                               type="number"
@@ -750,14 +835,14 @@
                             />
                           </td>
 
-                          <td class="py-2 pr-2 text-xs sm:text-sm" style="min-width: 80px;">
+                          <td class="py-2 pr-2 text-xs sm:text-sm" style="min-width: 80px">
                             {{
                               asNumber(l.get('cfa')?.value) /
                                 Math.max(1, asNumber(form.get('usdRate')?.value)) | number : '1.0-0'
                             }}
                           </td>
 
-                          <td class="py-2 pr-2" style="min-width: 80px;">
+                          <td class="py-2 pr-2" style="min-width: 80px">
                             <input
                               formControlName="fpbgPct"
                               type="number"
@@ -774,7 +859,7 @@
                             </div>
                           </td>
 
-                          <td class="py-2 pr-2 text-xs sm:text-sm" style="min-width: 110px;">
+                          <td class="py-2 pr-2 text-xs sm:text-sm" style="min-width: 110px">
                             {{
                               Math.round(
                                 asNumber(l.get('cfa')?.value) *
@@ -783,7 +868,7 @@
                             }}
                           </td>
 
-                          <td class="py-2 pr-2" style="min-width: 80px;">
+                          <td class="py-2 pr-2" style="min-width: 80px">
                             <input
                               formControlName="cofinPct"
                               type="number"
@@ -793,7 +878,7 @@
                             />
                           </td>
 
-                          <td class="py-2 pr-2 text-xs sm:text-sm" style="min-width: 110px;">
+                          <td class="py-2 pr-2 text-xs sm:text-sm" style="min-width: 110px">
                             {{
                               Math.round(
                                 asNumber(l.get('cfa')?.value) *
@@ -834,21 +919,19 @@
                       <tfoot>
                         <tr class="font-semibold bg-emerald-50">
                           <td class="py-2 pr-2">Total activité</td>
-                          <td></td>
-                          <td class="py-2 pr-2">
+                          <td class="py-2 pr-2 text-right">
                             {{ totalActivityCfa(selectedBudgetActivity!) | number : '1.0-0' }} FCFA
                           </td>
-                          <td class="py-2 pr-2">
+                          <td class="py-2 pr-2 text-right">
                             {{ totalActivityUsd(selectedBudgetActivity!) | number : '1.0-0' }} USD
                           </td>
-                          <td></td>
-                          <td class="py-2 pr-2">
+                          <td class="py-2 pr-2"></td>
+                          <td class="py-2 pr-2 text-right">
                             {{ totalActivityFpbg(selectedBudgetActivity!) | number : '1.0-0' }} FCFA
                           </td>
-                          <td></td>
-                          <td class="py-2 pr-2">
-                            {{ totalActivityCofin(selectedBudgetActivity!) | number : '1.0-0' }}
-                            FCFA
+                          <td class="py-2 pr-2"></td>
+                          <td class="py-2 pr-2 text-right">
+                            {{ totalActivityCofin(selectedBudgetActivity!) | number : '1.0-0' }} FCFA
                           </td>
                           <td></td>
                         </tr>
@@ -1197,7 +1280,9 @@
              ÉTAPE 8 : ANNEXES (Conditionnelles selon type d'organisation)
              ================================= -->
         <div *ngIf="current() === 7" class="space-y-6">
-          <h2 class="text-lg sm:text-xl md:text-[20px] leading-6 font-semibold text-slate-900 mb-4">Annexes</h2>
+          <h2 class="text-lg sm:text-xl md:text-[20px] leading-6 font-semibold text-slate-900 mb-4">
+            Annexes
+          </h2>
 
           <!-- Affichage du type d'organisation -->
           <div *ngIf="usertype" class="p-3 border rounded-lg bg-emerald-50 border-emerald-200">
@@ -1426,7 +1511,9 @@
      ÉTAPE 9 : RÉCAPITULATIF (mis à jour)
      ================================= -->
         <div *ngIf="current() === 8" class="space-y-6">
-          <h2 class="text-lg sm:text-xl md:text-[20px] leading-6 font-semibold text-slate-900 mb-2">Récapitulatif</h2>
+          <h2 class="text-lg sm:text-xl md:text-[20px] leading-6 font-semibold text-slate-900 mb-2">
+            Récapitulatif
+          </h2>
 
           <!-- Étape 1 : Proposition -->
           <div class="p-4 border rounded-lg">
@@ -1641,6 +1728,44 @@
                   Taux : 1 USD = {{ form.get('usdRate')?.value | number : '1.0-0' }} FCFA
                 </div>
               </div>
+            </div>
+
+            <!-- Validation : règle des 10% pour les frais indirects -->
+            @if (indirectCapError) {
+            <div
+              class="mt-3 p-3 border border-amber-300 bg-amber-50 rounded text-sm text-amber-800"
+            >
+              ⚠️ <strong>Attention :</strong> Les frais indirects (overheads) ne peuvent pas
+              dépasser 10 % du budget direct.
+              <br />
+              Plafond autorisé :
+              <strong>{{ sumDirect() * 0.1 | number : '1.0-0' }} FCFA</strong> (actuellement
+              {{ indirectShare() | percent : '1.0-1' }})
+            </div>
+            }
+
+            <!-- Input pour les frais indirects avec affichage du plafond -->
+            <div class="mt-3 p-3 border rounded-md bg-slate-50">
+              <label class="block text-sm font-medium text-slate-700 mb-2">
+                Frais indirects (overheads)
+              </label>
+              <input
+                type="number"
+                [formControl]="$any(form.get('indirectOverheads'))"
+                (input)="recomputeIndirectCapGlobal()"
+                class="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-blue-500"
+                [class.border-amber-500]="indirectCapError"
+                placeholder="Montant en FCFA"
+              />
+              <div class="mt-1 text-xs text-slate-600">
+                Maximum autorisé (10% du direct) :
+                <strong>{{ sumDirect() * 0.1 | number : '1.0-0' }} FCFA</strong>
+              </div>
+              @if (indirectCapError) {
+              <div class="mt-1 text-xs text-amber-700">
+                ⚠️ Le montant saisi dépasse le plafond de 10%
+              </div>
+              }
             </div>
           </div>
 
@@ -1868,23 +1993,96 @@
   </div>
 
   <!-- =============================================
+       OVERLAY DE CHARGEMENT PENDANT SOUMISSION
+       ============================================= -->
+  <div
+    *ngIf="isSubmitting()"
+    class="fixed inset-0 z-50 flex flex-col items-center justify-center p-4 bg-gradient-to-br from-emerald-900/95 to-blue-900/95 backdrop-blur-md"
+  >
+    <!-- Animation de chargement -->
+    <div class="text-center">
+      <!-- Spinner principal -->
+      <div class="relative mb-8">
+        <!-- Cercle extérieur tournant -->
+        <div class="w-24 h-24 sm:w-32 sm:h-32 mx-auto">
+          <svg class="animate-spin" viewBox="0 0 50 50">
+            <circle
+              class="stroke-current text-emerald-400 opacity-25"
+              cx="25"
+              cy="25"
+              r="20"
+              fill="none"
+              stroke-width="4"
+            ></circle>
+            <circle
+              class="stroke-current text-emerald-400"
+              cx="25"
+              cy="25"
+              r="20"
+              fill="none"
+              stroke-width="4"
+              stroke-dasharray="80"
+              stroke-dashoffset="60"
+              stroke-linecap="round"
+            ></circle>
+          </svg>
+        </div>
+
+        <!-- Icône au centre -->
+        <div class="absolute inset-0 flex items-center justify-center">
+          <svg
+            class="w-10 h-10 sm:w-12 sm:h-12 text-white animate-pulse"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+            ></path>
+          </svg>
+        </div>
+      </div>
+
+      <!-- Texte de chargement -->
+      <div class="space-y-3">
+        <h3 class="text-2xl sm:text-3xl font-bold text-white animate-pulse">
+          📤 Soumission en cours...
+        </h3>
+        <p class="text-sm sm:text-base text-emerald-100 max-w-md mx-auto">
+          Veuillez patienter pendant que nous traitons votre demande et envoyons les emails de confirmation
+        </p>
+
+        <!-- Points de progression animés -->
+        <div class="flex items-center justify-center gap-2 pt-4">
+          <div class="w-2 h-2 bg-white rounded-full animate-bounce" style="animation-delay: 0ms"></div>
+          <div class="w-2 h-2 bg-white rounded-full animate-bounce" style="animation-delay: 150ms"></div>
+          <div class="w-2 h-2 bg-white rounded-full animate-bounce" style="animation-delay: 300ms"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =============================================
        MODALE DE SUCCÈS APRÈS SOUMISSION
        ============================================= -->
   <div
     *ngIf="showSuccessModal"
-    class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
+    class="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/40 backdrop-blur-sm"
   >
     <div
-      class="relative w-full max-w-2xl overflow-hidden bg-white shadow-2xl rounded-2xl ring-1 ring-black/5 animate-fade-in"
+      class="relative w-full max-w-2xl overflow-hidden bg-white shadow-2xl rounded-xl sm:rounded-2xl ring-1 ring-black/5 animate-fade-in max-h-[95vh] overflow-y-auto"
     >
       <!-- Header avec icône de succès -->
-      <div class="relative p-8 text-center bg-gradient-to-br from-emerald-50 to-white">
+      <div class="relative p-4 sm:p-6 md:p-8 text-center bg-gradient-to-br from-emerald-50 to-white">
         <!-- Icône de succès animée -->
         <div
-          class="flex items-center justify-center w-20 h-20 mx-auto mb-4 rounded-full bg-emerald-100"
+          class="flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-3 sm:mb-4 rounded-full bg-emerald-100"
         >
           <svg
-            class="w-12 h-12 text-emerald-600 animate-bounce-short"
+            class="w-10 h-10 sm:w-12 sm:h-12 text-emerald-600 animate-bounce-short"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -1899,18 +2097,18 @@
         </div>
 
         <!-- Titre -->
-        <h2 class="mb-2 text-3xl font-bold text-slate-900">🎉 Projet soumis avec succès !</h2>
-        <p class="text-slate-600">Votre dossier a été envoyé et est en cours de traitement</p>
+        <h2 class="mb-2 text-xl sm:text-2xl md:text-3xl font-bold text-slate-900">🎉 Projet soumis avec succès !</h2>
+        <p class="text-sm sm:text-base text-slate-600">Votre dossier a été envoyé et est en cours de traitement</p>
       </div>
 
       <!-- Contenu -->
-      <div class="p-8 space-y-6">
+      <div class="p-4 sm:p-6 md:p-8 space-y-4 sm:space-y-6">
         <!-- Résumé de la soumission -->
-        <div class="space-y-4">
+        <div class="space-y-3 sm:space-y-4">
           <!-- Titre du projet -->
-          <div class="flex items-start gap-3 p-4 border rounded-lg bg-slate-50 border-slate-200">
+          <div class="flex items-start gap-2 sm:gap-3 p-3 sm:p-4 border rounded-lg bg-slate-50 border-slate-200">
             <svg
-              class="w-6 h-6 mt-0.5 text-emerald-600"
+              class="w-5 h-5 sm:w-6 sm:h-6 mt-0.5 text-emerald-600 flex-shrink-0"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -1922,22 +2120,22 @@
                 d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
               ></path>
             </svg>
-            <div class="flex-1">
-              <p class="text-sm font-medium text-slate-500">Titre du projet</p>
-              <p class="mt-1 text-base font-semibold text-slate-900">
+            <div class="flex-1 min-w-0">
+              <p class="text-xs sm:text-sm font-medium text-slate-500">Titre du projet</p>
+              <p class="mt-1 text-sm sm:text-base font-semibold text-slate-900 break-words">
                 {{ submissionSummary?.projectTitle }}
               </p>
             </div>
           </div>
 
           <!-- Statistiques -->
-          <div class="grid grid-cols-2 gap-4">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <!-- Documents -->
             <div
-              class="flex items-center gap-3 p-4 border rounded-lg border-emerald-200 bg-emerald-50"
+              class="flex items-center gap-2 sm:gap-3 p-3 sm:p-4 border rounded-lg border-emerald-200 bg-emerald-50"
             >
               <svg
-                class="w-8 h-8 text-emerald-600"
+                class="w-7 h-7 sm:w-8 sm:h-8 text-emerald-600 flex-shrink-0"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -1950,17 +2148,17 @@
                 ></path>
               </svg>
               <div>
-                <p class="text-2xl font-bold text-emerald-900">
+                <p class="text-xl sm:text-2xl font-bold text-emerald-900">
                   {{ submissionSummary?.documentsCount }}
                 </p>
-                <p class="text-xs font-medium text-emerald-700">Document(s) uploadé(s)</p>
+                <p class="text-[10px] sm:text-xs font-medium text-emerald-700">Document(s) uploadé(s)</p>
               </div>
             </div>
 
             <!-- Budget -->
-            <div class="flex items-center gap-3 p-4 border border-blue-200 rounded-lg bg-blue-50">
+            <div class="flex items-center gap-2 sm:gap-3 p-3 sm:p-4 border border-blue-200 rounded-lg bg-blue-50">
               <svg
-                class="w-8 h-8 text-blue-600"
+                class="w-7 h-7 sm:w-8 sm:h-8 text-blue-600 flex-shrink-0"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -1972,21 +2170,21 @@
                   d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
                 ></path>
               </svg>
-              <div>
-                <p class="text-2xl font-bold text-blue-900">
+              <div class="min-w-0">
+                <p class="text-xl sm:text-2xl font-bold text-blue-900 truncate">
                   {{ submissionSummary?.totalBudget || 0 | number : '1.0-0' }}
                 </p>
-                <p class="text-xs font-medium text-blue-700">FCFA (Budget total)</p>
+                <p class="text-[10px] sm:text-xs font-medium text-blue-700">FCFA (Budget total)</p>
               </div>
             </div>
           </div>
         </div>
 
         <!-- Informations -->
-        <div class="p-4 border-l-4 border-blue-400 rounded-r-lg bg-blue-50">
-          <div class="flex items-start gap-3">
+        <div class="p-3 sm:p-4 border-l-4 border-blue-400 rounded-r-lg bg-blue-50">
+          <div class="flex items-start gap-2 sm:gap-3">
             <svg
-              class="w-5 h-5 mt-0.5 text-blue-600"
+              class="w-4 h-4 sm:w-5 sm:h-5 mt-0.5 text-blue-600 flex-shrink-0"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -1998,9 +2196,9 @@
                 d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
               ></path>
             </svg>
-            <div class="flex-1">
-              <p class="text-sm font-semibold text-blue-900">Prochaines étapes</p>
-              <ul class="mt-2 space-y-1 text-sm text-blue-800">
+            <div class="flex-1 min-w-0">
+              <p class="text-xs sm:text-sm font-semibold text-blue-900">Prochaines étapes</p>
+              <ul class="mt-2 space-y-1 text-xs sm:text-sm text-blue-800">
                 <li>✅ Vous recevrez un email de confirmation sous peu</li>
                 <li>📋 Votre dossier sera évalué par le comité technique</li>
                 <li>📧 Nous vous tiendrons informé par email de l'avancement</li>
@@ -2012,13 +2210,13 @@
 
       <!-- Footer avec actions -->
       <div
-        class="flex items-center justify-between gap-4 px-8 py-6 border-t bg-slate-50 border-slate-200"
+        class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-4 px-4 sm:px-6 md:px-8 py-4 sm:py-6 border-t bg-slate-50 border-slate-200"
       >
-        <p class="text-sm text-slate-600">Un récapitulatif a été envoyé à votre adresse email</p>
+        <p class="text-xs sm:text-sm text-slate-600 text-center sm:text-left">Un récapitulatif a été envoyé à votre adresse email</p>
         <button
           type="button"
           (click)="closeSuccessModal()"
-          class="px-6 py-3 font-semibold text-white transition-colors rounded-lg bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
+          class="w-full sm:w-auto px-4 sm:px-6 py-2.5 sm:py-3 text-sm sm:text-base font-semibold text-white transition-colors rounded-lg bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
         >
           Retour au tableau de bord
         </button>
