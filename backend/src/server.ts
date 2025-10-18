@@ -29,7 +29,8 @@ const __dirname = path.dirname(__filename);
 
 const allowedOrigins = [
   'http://localhost:4000', // Dev local
-  'https://guichetnumerique.fpbg.ga', // Frontend production
+  'https://guichetnumerique.fpbg.ga',
+  'https://api.fpbg.org/api', // Frontend production
   process.env.FRONT_URL // Valeur configurable via .env
 ].filter(Boolean); // Supprime les valeurs undefined
 
