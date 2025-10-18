@@ -27,7 +27,7 @@
 
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
-import { Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectorRef, Component, computed, effect, inject, signal } from '@angular/core';
 
 import {
   AbstractControl,
@@ -176,6 +176,7 @@ export class SubmissionWizard {
   private router = inject(Router);
   private sanitizer = inject(DomSanitizer);
   private http = inject(HttpClient);
+  private cdr = inject(ChangeDetectorRef);
 
   // Type d'organisation de l'utilisateur connecté
   usertype: string = '';
@@ -303,6 +304,72 @@ export class SubmissionWizard {
       };
     });
     return out;
+  }
+
+  /**
+   * Méthode de débogage pour voir pourquoi canGoNext() retourne false à l'étape 3
+   * Utilisation: Ouvrir la console et taper: this.debugCanGoNextStep3()
+   */
+  debugCanGoNextStep3(): string {
+    const startDate = this.activitiesHeader.get('startDate');
+    const endDate = this.activitiesHeader.get('endDate');
+    const summary = this.activitiesHeader.get('summary');
+
+    const start = startDate?.value;
+    const end = endDate?.value;
+    const summaryVal = summary?.value;
+
+    if (!start) return '❌ Date de début manquante';
+    if (!end) return '❌ Date de fin manquante';
+    if (!summaryVal || summaryVal.trim() === '') return '❌ Résumé manquant';
+
+    const startD = new Date(start);
+    const endD = new Date(end);
+    if (isNaN(startD.getTime())) return '❌ Date de début invalide';
+    if (isNaN(endD.getTime())) return '❌ Date de fin invalide';
+    if (endD < startD) return '❌ Date de fin < date de début';
+
+    const monthsDiff =
+      (endD.getFullYear() - startD.getFullYear()) * 12 + (endD.getMonth() - startD.getMonth()) + 1;
+    const maxMonths = this.getMaxDuration();
+    if (monthsDiff > maxMonths)
+      return `❌ Durée trop longue: ${monthsDiff} mois > ${maxMonths} mois max`;
+
+    const wordCount = summaryVal.trim().split(/\s+/).filter((w: string) => w.length > 0).length;
+    if (wordCount > 200) return `❌ Résumé trop long: ${wordCount} mots > 200 mots max`;
+
+    const groups = this.activities.controls as FormGroup[];
+    if (groups.length < 1) return '❌ Aucune activité';
+
+    for (let i = 0; i < groups.length; i++) {
+      const g = groups[i];
+      const title = g.get('title')?.value;
+      const actStart = g.get('start')?.value;
+      const actEnd = g.get('end')?.value;
+      const actSummary = g.get('summary')?.value;
+
+      if (!title || title.trim() === '') return `❌ Activité ${i + 1}: titre manquant`;
+      if (!actStart) return `❌ Activité ${i + 1}: date début manquante`;
+      if (!actEnd) return `❌ Activité ${i + 1}: date fin manquante`;
+      if (!actSummary || actSummary.trim() === '') return `❌ Activité ${i + 1}: résumé manquant`;
+
+      if (title.length > 50) return `❌ Activité ${i + 1}: titre trop long (${title.length} > 50)`;
+
+      const actWordCount = actSummary.trim().split(/\s+/).filter((w: string) => w.length > 0).length;
+      if (actWordCount > 50)
+        return `❌ Activité ${i + 1}: résumé trop long (${actWordCount} > 50 mots)`;
+
+      const actStartD = new Date(actStart);
+      const actEndD = new Date(actEnd);
+      if (isNaN(actStartD.getTime())) return `❌ Activité ${i + 1}: date début invalide`;
+      if (isNaN(actEndD.getTime())) return `❌ Activité ${i + 1}: date fin invalide`;
+      if (actEndD < actStartD) return `❌ Activité ${i + 1}: date fin < date début`;
+      if (actStartD < startD)
+        return `❌ Activité ${i + 1}: commence avant le projet (${actStart} < ${start})`;
+      if (actEndD > endD) return `❌ Activité ${i + 1}: finit après le projet (${actEnd} > ${end})`;
+    }
+
+    return '✅ Tout est valide - canGoNext() devrait retourner true';
   }
 
   //calcul de la taille mot
@@ -535,7 +602,7 @@ export class SubmissionWizard {
         nonNullable: true,
         validators: [Validators.required],
       }),
-      endDate: this.fb.control<string>(this.today(), {
+      endDate: this.fb.control<string>(this.defaultEndDate(), {
         nonNullable: true,
         validators: [Validators.required],
       }),
@@ -552,17 +619,18 @@ export class SubmissionWizard {
   private makeActivity(
     data?: Partial<{ title: string; start: string; end: string; summary: string }>
   ): FormGroup {
+    const startDate = data?.start ?? this.today();
     return this.fb.group(
       {
         title: this.fb.control<string>(data?.title ?? '', {
           nonNullable: true,
-          validators: [Validators.required, Validators.maxLength(160)],
+          validators: [Validators.required, Validators.maxLength(50)],
         }),
-        start: this.fb.control<string>(data?.start ?? this.today(), {
+        start: this.fb.control<string>(startDate, {
           nonNullable: true,
           validators: [Validators.required],
         }),
-        end: this.fb.control<string>(data?.end ?? this.today(), {
+        end: this.fb.control<string>(data?.end ?? this.defaultActivityEndDate(startDate), {
           nonNullable: true,
           validators: [Validators.required],
         }),
@@ -631,12 +699,18 @@ export class SubmissionWizard {
     if (!budget) {
       budget = this.fb.group({
         lines: this.fb.array<FormGroup>([this.createBudgetLine()]),
+        indirectOverheads: [0, [Validators.min(0)]], // Frais indirects par activité
       });
       g.addControl('budget', budget);
       // Si on vient de le créer et qu'on veut le laisser inactif avant l'étape 5 :
       if (mode === 'disable') budget.disable({ emitEvent: false });
       if (mode === 'enable') budget.enable({ emitEvent: false });
       return;
+    }
+
+    // S'assurer que le champ indirectOverheads existe (pour la rétrocompatibilité)
+    if (!budget.get('indirectOverheads')) {
+      budget.addControl('indirectOverheads', this.fb.control(0, [Validators.min(0)]));
     }
 
     if (mode === 'disable' && !budget.disabled) budget.disable({ emitEvent: false });
@@ -999,7 +1073,13 @@ export class SubmissionWizard {
   }
 
   public totalIndirect(): number {
-    return this.asNumber(this.form.get('indirectOverheads')?.value);
+    // Agréger les frais indirects de toutes les activités
+    let total = 0;
+    const acts = (this.activities.controls as FormGroup[]) || [];
+    for (const a of acts) {
+      total += this.asNumber(a.get(['budget', 'indirectOverheads'])?.value);
+    }
+    return total;
   }
 
   public totalProject(): number {
@@ -1025,6 +1105,85 @@ export class SubmissionWizard {
     return this.totalIndirect() > this.allowedIndirectMax();
   }
 
+  public budgetTooLow(): boolean {
+    const total = this.totalProject();
+    const min = this.budgetMin();
+    return total < min;
+  }
+
+  public budgetTooHigh(): boolean {
+    const total = this.totalProject();
+    const max = this.budgetMax();
+    return total > max;
+  }
+
+  /**
+   * Calcule le total des coûts directs pour une activité spécifique
+   */
+  public activityDirectCosts(activityIndex: number): number {
+    const activity = this.activities.at(activityIndex) as FormGroup;
+    if (!activity) return 0;
+    const lines = (activity.get(['budget', 'lines']) as FormArray<FormGroup>)?.controls || [];
+    let total = 0;
+    for (const l of lines) {
+      total += this.asNumber(l.get('cfa')?.value);
+    }
+    return total;
+  }
+
+  /**
+   * Récupère les frais indirects d'une activité spécifique
+   */
+  public activityIndirectCosts(activityIndex: number): number {
+    const activity = this.activities.at(activityIndex) as FormGroup;
+    if (!activity) return 0;
+    const control = activity.get(['budget', 'indirectOverheads']);
+    // Utiliser getRawValue pour être sûr d'avoir la valeur actuelle
+    const budget = activity.get('budget') as FormGroup;
+    if (!budget) return 0;
+    const value = budget.getRawValue().indirectOverheads;
+    return this.asNumber(value);
+  }
+
+  /**
+   * Calcule le plafond des frais indirects pour une activité (10% des coûts directs)
+   */
+  public activityAllowedIndirectMax(activityIndex: number): number {
+    const direct = this.activityDirectCosts(activityIndex);
+    return direct > 0 ? Math.floor(direct / 9) : 0;
+  }
+
+  /**
+   * Vérifie si les frais indirects d'une activité dépassent 10%
+   */
+  public activityOverheadTooHigh(activityIndex: number): boolean {
+    return this.activityIndirectCosts(activityIndex) > this.activityAllowedIndirectMax(activityIndex);
+  }
+
+  /**
+   * Calcule le total d'une activité (directs + indirects)
+   */
+  public activityTotal(activityIndex: number): number {
+    return this.activityDirectCosts(activityIndex) + this.activityIndirectCosts(activityIndex);
+  }
+
+  /**
+   * Calcule la part des frais indirects pour une activité
+   */
+  public activityIndirectShare(activityIndex: number): number {
+    const total = this.activityTotal(activityIndex);
+    const indirect = this.activityIndirectCosts(activityIndex);
+    return total > 0 ? indirect / total : 0;
+  }
+
+  /**
+   * Retourne le FormControl des frais indirects d'une activité
+   */
+  public activityIndirectControl(activityIndex: number): any {
+    const activity = this.activities.at(activityIndex) as FormGroup;
+    return activity?.get(['budget', 'indirectOverheads']);
+  }
+
   /**
    * Retourne les bornes min/max du budget selon le type de subvention
    */
@@ -1043,8 +1202,23 @@ export class SubmissionWizard {
     return total < this.budgetMin() || total > this.budgetMax();
   }
 
+  // Signals pour les erreurs de budget (mise à jour réactive)
+  private _budgetTooLowSignal = signal(false);
+  private _budgetTooHighSignal = signal(false);
+  private _overheadTooHighSignal = signal(false);
+
+  // Getters publics pour accéder aux signals dans le template
+  get budgetTooLowSignal() { return this._budgetTooLowSignal.asReadonly(); }
+  get budgetTooHighSignal() { return this._budgetTooHighSignal.asReadonly(); }
+  get overheadTooHighSignal() { return this._overheadTooHighSignal.asReadonly(); }
+
   // Erreur globale si dépassement 10% ou hors tranche
   public recomputeIndirectCapGlobal(): void {
+    // Mettre à jour les signals
+    this._budgetTooLowSignal.set(this.budgetTooLow());
+    this._budgetTooHighSignal.set(this.budgetTooHigh());
+    this._overheadTooHighSignal.set(this.overheadTooHigh());
+
     this.indirectCapError = this.overheadTooHigh();
     const rangeBudgetError = this.totalOutOfRange();
 
@@ -1054,6 +1228,9 @@ export class SubmissionWizard {
     if (rangeBudgetError) errs['budgetRange'] = true;
     else delete errs['budgetRange'];
     this.form.setErrors(Object.keys(errs).length ? errs : null);
+
+    // Forcer la détection de changement Angular
+    this.cdr.markForCheck();
   }
 
   /* ==============================
@@ -1064,89 +1241,67 @@ export class SubmissionWizard {
    * Retourne la liste des documents requis selon le type d'organisation
    */
   getRequiredDocuments(): Array<{ key: string; label: string; required: boolean }> {
-    const common = [
-      { key: 'LETTRE_MOTIVATION', label: 'Lettre de motivation', required: true },
-      { key: 'CV', label: 'CV du porteur et des membres clés', required: true },
+    // ===== DOCUMENTS OBLIGATOIRES UNIVERSELS =====
+    const universalRequired = [
+      { key: 'NOTE_CONCEPTUELLE', label: 'Formulaire de Note Conceptuelle complété', required: true },
+      { key: 'LETTRE_MOTIVATION', label: 'Lettre de motivation du porteur de projet', required: true },
+      { key: 'BUDGET_DETAILLE', label: 'Budget détaillé du projet', required: true },
+      { key: 'CHRONOGRAMME', label: "Chronogramme d'exécution", required: true },
+      { key: 'CV_RESPONSABLES', label: 'CV du porteur et des responsables techniques', required: true },
+      { key: 'RIB', label: "RIB de l'organisation", required: true },
     ];
 
-    const optional = [
-      {
-        key: 'LETTRES_SOUTIEN',
-        label: 'Lettres de soutien (facultatives mais encouragées)',
-        required: false,
-      },
-      {
-        key: 'PREUVE_NON_FAILLITE',
-        label: 'Preuve de non-faillite (recommandée pour les entreprises)',
-        required: false,
-      },
-    ];
-
-    const additional = [
-      { key: 'CARTOGRAPHIE', label: 'Cartographie', required: false },
-      { key: 'FICHE_CIRCUIT', label: 'Fiche Circuit', required: false },
-      { key: 'BUDGET_DETAILLE', label: 'Budget détaillé', required: false },
-      { key: 'CHRONOGRAMME', label: 'Chronogramme', required: false },
-    ];
-
-    let specific: Array<{ key: string; label: string; required: boolean }> = [];
-
-    // Normaliser le type d'organisation (enlever accents, espaces, etc.)
+    // Normaliser le type d'organisation
     const type = this.usertype?.toLowerCase().trim() || '';
 
-    if (
-      type.includes('association') ||
-      type.includes('ong') ||
-      type.includes('communaut') ||
-      type.includes('coopérative')
-    ) {
-      // 🏢 Association / ONG / Communautés / Coopératives
-      specific = [
-        { key: 'CERTIFICAT_ENREGISTREMENT', label: "Certificat d'enregistrement", required: true },
+    let specificDocuments: Array<{ key: string; label: string; required: boolean }> = [];
+
+    // ===== DOCUMENTS SPÉCIFIQUES OBLIGATOIRES selon le type d'organisation =====
+    if (type.includes('ong') || type.includes('association') || type.includes('coopérative')) {
+      // 🏢 ONG/Associations Coopératives
+      specificDocuments = [
         { key: 'STATUTS_REGLEMENT', label: 'Statuts et règlement intérieur', required: true },
-        { key: 'PV_ASSEMBLEE', label: 'PV de la dernière assemblée générale', required: true },
-        {
-          key: 'RAPPORTS_FINANCIERS',
-          label: 'Rapports financiers des trois dernières années',
-          required: true,
-        },
+        { key: 'FICHE_CIRCUIT', label: 'Fiche circuit (Limatriculation)', required: false }, // ❌ Non requis selon tableau
+        { key: 'AGREMENT', label: "Agrément/récépissé d'existence", required: true },
       ];
-    } else if (
-      type.includes('pme') ||
-      type.includes('pmi') ||
-      type.includes('startup') ||
-      type.includes('secteur privé') ||
-      type.includes('privé')
-    ) {
-      // 💼 PME / PMI / Startup / Secteur privé
-      specific = [
-        { key: 'RCCM', label: 'RCCM (Registre du Commerce et du Crédit Mobilier)', required: true },
-        { key: 'AGREMENT', label: "Agrément d'exploitation (si applicable)", required: false },
-        {
-          key: 'ETATS_FINANCIERS',
-          label: 'États financiers récents ou preuve de non-faillite',
-          required: true,
-        },
+    } else if (type.includes('pme') || type.includes('pmi') || type.includes('startup')) {
+      // 💼 PME/PMI/Startups
+      specificDocuments = [
+        { key: 'STATUTS_REGLEMENT', label: 'Statuts et règlement intérieur', required: true },
+        { key: 'FICHE_CIRCUIT', label: 'Fiche circuit (Limatriculation)', required: true },
+        { key: 'AGREMENT', label: "Agrément/récépissé d'existence", required: true },
       ];
-    } else if (
-      type.includes('gouvernement') ||
-      type.includes('public') ||
-      type.includes('recherche') ||
-      type.includes('entités gouvernementales') ||
-      type.includes('organismes de recherche')
-    ) {
-      // 🏛 Secteur public / Organismes de recherche
-      specific = [
-        {
-          key: 'DOCUMENTS_STATUTAIRES',
-          label: 'Documents statutaires ou arrêtés de création',
-          required: true,
-        },
-        { key: 'RIB', label: "Relevé d'identité bancaire (RIB)", required: true },
+    } else if (type.includes('entités gouvernementales') || type.includes('gouvernement')) {
+      // 🏛 Entités gouvernementales
+      specificDocuments = [
+        { key: 'STATUTS_REGLEMENT', label: 'Statuts et règlement intérieur', required: true },
+        { key: 'FICHE_CIRCUIT', label: 'Fiche circuit (Limatriculation)', required: false }, // Variable selon tableau
+        { key: 'AGREMENT', label: "Agrément/récépissé d'existence", required: false }, // ❌ Non requis selon tableau
+      ];
+    } else if (type.includes('organismes de recherche') || type.includes('recherche')) {
+      // 🔬 Organismes de recherche
+      specificDocuments = [
+        { key: 'STATUTS_REGLEMENT', label: 'Statuts et règlement intérieur', required: true },
+        { key: 'FICHE_CIRCUIT', label: 'Fiche circuit (Limatriculation)', required: false }, // ❌ Non requis selon tableau
+        { key: 'AGREMENT', label: "Agrément/récépissé d'existence", required: true },
+      ];
+    } else if (type.includes('communautés organisées') || type.includes('communaut')) {
+      // 👥 Communautés organisées
+      specificDocuments = [
+        { key: 'STATUTS_REGLEMENT', label: 'Statuts et règlement intérieur', required: true },
+        { key: 'FICHE_CIRCUIT', label: 'Fiche circuit (Limatriculation)', required: false }, // ❌ Non requis selon tableau
+        { key: 'AGREMENT', label: "Agrément/récépissé d'existence", required: true },
       ];
     }
 
-    return [...common, ...specific, ...optional, ...additional];
+    // ===== DOCUMENTS FACULTATIFS =====
+    const optionalDocuments = [
+      { key: 'CARTOGRAPHIE', label: 'Cartographie/localisation du projet', required: false },
+      { key: 'LETTRES_SOUTIEN', label: 'Lettre de partenariat/soutien', required: false },
+    ];
+
+    // Retourner tous les documents pertinents pour ce type d'organisation
+    return [...universalRequired, ...specificDocuments, ...optionalDocuments];
   }
 
   /**
@@ -1178,14 +1333,9 @@ export class SubmissionWizard {
           const config = this.subventionConfig[code];
 
           if (config) {
-            // ✅ Mettre à jour tous les signals
-            this.typeSubventionCode.set(code); // 🔥 CRUCIAL : définit le code pour getMaxDuration()
-            this.typeSubvention.set(config.libelle);
-            this.montantRange.set(
-              `${config.montantMin.toLocaleString('fr-FR')} – ${config.montantMax.toLocaleString('fr-FR')} FCFA`
-            );
-            this.dureeMax.set(config.dureeMax);
-            console.log('✅ Type de subvention chargé:', config.libelle, '(code:', code, ') - Durée max:', config.dureeMax, 'mois');
+            // ✅ Utiliser setTypeSubvention() pour mettre à jour TOUS les validateurs
+            console.log('✅ Type de subvention détecté:', config.libelle, '(code:', code, ') - Durée max:', config.dureeMax, 'mois');
+            this.setTypeSubvention(code);
           } else {
             console.warn('⚠️ Aucune configuration trouvée pour le code:', code);
           }
@@ -1514,6 +1664,9 @@ export class SubmissionWizard {
     // Note: La surveillance des changements de type de subvention est gérée via effect()
     // dans le template ou manuellement quand le type change
 
+    // Calcul initial des erreurs de budget
+    setTimeout(() => this.recomputeIndirectCapGlobal(), 0);
+
     // Autosave unique (LS + méta + event)
     this.form.valueChanges.pipe(debounceTime(400)).subscribe((v) => {
       // Sauve le brouillon
@@ -1565,6 +1718,28 @@ export class SubmissionWizard {
     ).padStart(2, '0')}`;
   }
 
+  /**
+   * Retourne une date par défaut pour la fin du projet (12 mois après aujourd'hui)
+   */
+  defaultEndDate(): string {
+    const d = new Date();
+    d.setMonth(d.getMonth() + 12); // Ajouter 12 mois par défaut
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(
+      d.getDate()
+    ).padStart(2, '0')}`;
+  }
+
+  /**
+   * Retourne une date de fin par défaut pour une activité (1 mois après la date donnée)
+   */
+  defaultActivityEndDate(startDate?: string): string {
+    const d = startDate ? new Date(startDate) : new Date();
+    d.setMonth(d.getMonth() + 1); // Ajouter 1 mois par défaut
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(
+      d.getDate()
+    ).padStart(2, '0')}`;
+  }
+
   toggleDomain(d: string, ev: Event) {
     const checked = (ev.target as HTMLInputElement).checked;
     const ctrl = this.stepProp.get('domains') as FormControl<string[]>;
@@ -1583,34 +1758,157 @@ export class SubmissionWizard {
   }
 
   // Validation douce pour autoriser "Suivant"
-  // Validation douce pour autoriser "Suivant"
   canGoNext(): boolean {
     const i = this.current();
+
     switch (i) {
       case 0:
         return this.stepProp.valid;
       case 1:
         return this.obj.valid;
       case 2: {
-        // ⬇️ On valide seulement les champs requis de l’étape 3
-        if (!this.activitiesHeader.valid) return false;
+        // ⬇️ Validation personnalisée pour l'étape 3
+
+        // Récupérer les valeurs de l'en-tête
+        const startDate = this.activitiesHeader.get('startDate');
+        const endDate = this.activitiesHeader.get('endDate');
+        const summary = this.activitiesHeader.get('summary');
+
+        const start = startDate?.value;
+        const end = endDate?.value;
+        const summaryVal = summary?.value;
+
+        // Vérifier que les champs sont remplis
+        if (!start || !end || !summaryVal || summaryVal.trim() === '') {
+          console.log('❌ [canGoNext] Étape 3 - Champs manquants:', { start, end, summaryVal });
+          return false;
+        }
+
+        // Vérifier que les dates sont valides (date de fin >= date de début)
+        const startD = new Date(start);
+        const endD = new Date(end);
+        if (isNaN(startD.getTime()) || isNaN(endD.getTime())) {
+          console.log('❌ [canGoNext] Étape 3 - Dates invalides');
+          return false;
+        }
+        if (endD < startD) {
+          console.log('❌ [canGoNext] Étape 3 - Date fin < date début');
+          return false;
+        }
+
+        // ✅ Vérifier que la durée est <= durée maximale autorisée
+        const monthsDiff =
+          (endD.getFullYear() - startD.getFullYear()) * 12 + (endD.getMonth() - startD.getMonth()) + 1;
+        const maxMonths = this.getMaxDuration();
+        if (monthsDiff > maxMonths) {
+          console.log(`❌ [canGoNext] Étape 3 - Durée trop longue: ${monthsDiff} mois > ${maxMonths} mois`);
+          return false;
+        }
+
+        // Vérifier la limite de mots du résumé (200 mots)
+        const wordCount = summaryVal.trim().split(/\s+/).filter((w: string) => w.length > 0).length;
+        if (wordCount > 200) {
+          console.log(`❌ [canGoNext] Étape 3 - Résumé trop long: ${wordCount} mots > 200`);
+          return false;
+        }
+
+        // Vérifier qu'il y a au moins une activité
         const groups = this.activities.controls as FormGroup[];
-        if (groups.length < 1) return false;
+        if (groups.length < 1) {
+          console.log('❌ [canGoNext] Étape 3 - Aucune activité');
+          return false;
+        }
 
         // chaque activité doit avoir title/start/end/summary valides
-        for (const g of groups) {
-          if (g.get('title')?.invalid) return false;
-          if (g.get('start')?.invalid) return false;
-          if (g.get('end')?.invalid) return false;
-          if (g.get('summary')?.invalid) return false;
-          // ⛔️ on ignore totalement 'budget' ici, même s'il est actif quelque part
+        for (let idx = 0; idx < groups.length; idx++) {
+          const g = groups[idx];
+          const title = g.get('title')?.value;
+          const actStart = g.get('start')?.value;
+          const actEnd = g.get('end')?.value;
+          const actSummary = g.get('summary')?.value;
+
+          // Vérifier que les champs sont remplis
+          if (!title || title.trim() === '') {
+            console.log(`❌ [canGoNext] Activité ${idx + 1} - Titre manquant`);
+            return false;
+          }
+          if (!actStart || !actEnd) {
+            console.log(`❌ [canGoNext] Activité ${idx + 1} - Dates manquantes`);
+            return false;
+          }
+          if (!actSummary || actSummary.trim() === '') {
+            console.log(`❌ [canGoNext] Activité ${idx + 1} - Description manquante`);
+            return false;
+          }
+
+          // Vérifier la longueur du titre (max 50)
+          if (title.length > 50) {
+            console.log(`❌ [canGoNext] Activité ${idx + 1} - Titre trop long: ${title.length} > 50`);
+            return false;
+          }
+
+          // Vérifier la limite de mots du résumé d'activité (50 mots)
+          const actWordCount = actSummary.trim().split(/\s+/).filter((w: string) => w.length > 0).length;
+          if (actWordCount > 50) {
+            console.log(`❌ [canGoNext] Activité ${idx + 1} - Description trop longue: ${actWordCount} > 50 mots`);
+            return false;
+          }
+
+          // Vérifier que les dates d'activité sont valides
+          const actStartD = new Date(actStart);
+          const actEndD = new Date(actEnd);
+          if (isNaN(actStartD.getTime()) || isNaN(actEndD.getTime())) {
+            console.log(`❌ [canGoNext] Activité ${idx + 1} - Dates invalides`);
+            return false;
+          }
+
+          // Date de fin >= date de début
+          if (actEndD < actStartD) {
+            console.log(`❌ [canGoNext] Activité ${idx + 1} - Date fin < date début`);
+            return false;
+          }
+
+          // Les dates doivent être dans la fenêtre du projet
+          if (actStartD < startD) {
+            console.log(`❌ [canGoNext] Activité ${idx + 1} - Commence avant le projet (${actStart} < ${start})`);
+            return false;
+          }
+          if (actEndD > endD) {
+            console.log(`❌ [canGoNext] Activité ${idx + 1} - Finit après le projet (${actEnd} > ${end})`);
+            return false;
+          }
         }
+
+        console.log('✅ [canGoNext] Étape 3 - Tout est valide!');
         return true;
       }
       case 3:
         return this.risks.valid;
       case 4:
-        return this.budget.valid && !this.overheadTooHigh();
+        // Vérifier que le budget est valide, les frais indirects ne dépassent pas 10%,
+        // et le montant total respecte les limites du type de subvention
+
+        // Vérifier les frais indirects de chaque activité
+        const activities = this.activities.controls as FormGroup[];
+        for (let i = 0; i < activities.length; i++) {
+          if (this.activityOverheadTooHigh(i)) {
+            console.log(`❌ [canGoNext] Étape 4 - Activité ${i + 1} : frais indirects dépassent 10% des coûts directs`);
+            return false;
+          }
+        }
+
+        const totalBudget = this.totalProject();
+        const minBudget = this.budgetMin();
+        const maxBudget = this.budgetMax();
+        if (totalBudget < minBudget) {
+          console.log(`❌ [canGoNext] Étape 4 - Budget trop faible: ${totalBudget} FCFA < ${minBudget} FCFA`);
+          return false;
+        }
+        if (totalBudget > maxBudget) {
+          console.log(`❌ [canGoNext] Étape 4 - Budget trop élevé: ${totalBudget} FCFA > ${maxBudget} FCFA`);
+          return false;
+        }
+        return this.budget.valid;
       case 5:
         return this.projectState.valid;
       case 6:

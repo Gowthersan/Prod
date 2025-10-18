@@ -2,7 +2,7 @@ import { Prisma } from '@prisma/client';
 import prisma from '../config/db.js';
 import { AppError } from '../middlewares/error.middleware.js';
 import { DemandeSubventionDTO } from '../types/index.js';
-import { sendProjectSubmissionEmails, DemandeData } from '../utils/mail_projet.js';
+import { DemandeData, sendProjectSubmissionEmails } from '../utils/mail_projet.js';
 
 /**
  * Interface pour les données du formulaire frontend
@@ -152,330 +152,335 @@ export class DemandeSubventionService {
       console.log('✅ Organisation:', utilisateur.organisation?.nom);
 
       // 2️⃣ Utiliser une transaction Prisma pour garantir l'intégrité des données
-      const demande = await prisma.$transaction(async (tx) => {
-        // ========================================
-        // A) Créer la demande principale
-        // ========================================
-        const nouveleDemande = await tx.demandeSubvention.create({
-          data: {
-            // Métadonnées
-            statut: 'SOUMIS',
-            typeSoumission: 'NOTE_CONCEPTUELLE',
+      const demande = await prisma.$transaction(
+        async (tx) => {
+          // ========================================
+          // A) Créer la demande principale
+          // ========================================
+          const nouveleDemande = await tx.demandeSubvention.create({
+            data: {
+              // Métadonnées
+              statut: 'SOUMIS',
+              typeSoumission: 'NOTE_CONCEPTUELLE',
 
-            // Relations
-            idSoumisPar: idUtilisateur,
-            idOrganisation: utilisateur.idOrganisation!,
-            idAppelProjets: null, // TODO: lier à un AAP si nécessaire
+              // Relations
+              idSoumisPar: idUtilisateur,
+              idOrganisation: utilisateur.idOrganisation!,
+              idAppelProjets: null, // TODO: lier à un AAP si nécessaire
 
-            // ========================================
-            // Étape 1 - Proposition
-            // ========================================
-            titre: data.title,
-            domaines: data.domains || [],
-            localisation: data.location,
-            groupeCible: data.targetGroup,
-            justificationContexte: data.contextJustification,
+              // ========================================
+              // Étape 1 - Proposition
+              // ========================================
+              titre: data.title,
+              domaines: data.domains || [],
+              localisation: data.location,
+              groupeCible: data.targetGroup,
+              justificationContexte: data.contextJustification,
 
-            // ========================================
-            // Étape 2 - Objectifs & résultats
-            // ========================================
-            objectifs: data.objectives,
-            resultatsAttendus: data.expectedResults,
-            dureeMois: data.durationMonths,
+              // ========================================
+              // Étape 2 - Objectifs & résultats
+              // ========================================
+              objectifs: data.objectives,
+              resultatsAttendus: data.expectedResults,
+              dureeMois: data.durationMonths,
 
-            // ========================================
-            // Étape 3 - Activités (dates et résumé uniquement)
-            // ========================================
-            dateDebutActivites: data.activitiesStartDate ? new Date(data.activitiesStartDate) : new Date(),
-            dateFinActivites: data.activitiesEndDate ? new Date(data.activitiesEndDate) : new Date(),
-            resumeActivites: data.activitiesSummary || '',
+              // ========================================
+              // Étape 3 - Activités (dates et résumé uniquement)
+              // ========================================
+              dateDebutActivites: data.activitiesStartDate ? new Date(data.activitiesStartDate) : new Date(),
+              dateFinActivites: data.activitiesEndDate ? new Date(data.activitiesEndDate) : new Date(),
+              resumeActivites: data.activitiesSummary || '',
 
-            // ========================================
-            // Étape 5 - Budget
-            // ========================================
-            tauxUsd: data.usdRate || 655,
-            fraisIndirectsCfa: new Prisma.Decimal(data.indirectOverheads || 0),
+              // ========================================
+              // Étape 5 - Budget
+              // ========================================
+              tauxUsd: data.usdRate || 655,
+              fraisIndirectsCfa: new Prisma.Decimal(data.indirectOverheads || 0),
 
-            // ========================================
-            // Étape 6 - État & financement
-            // ========================================
-            stadeProjet: data.projectStage,
-            aFinancement: data.hasFunding,
-            detailsFinancement: data.fundingDetails || null,
-            honneurAccepte: data.honorAccepted,
+              // ========================================
+              // Étape 6 - État & financement
+              // ========================================
+              stadeProjet: data.projectStage,
+              aFinancement: data.hasFunding,
+              detailsFinancement: data.fundingDetails || null,
+              honneurAccepte: data.honorAccepted,
 
-            // ========================================
-            // Étape 7 - Durabilité
-            // ========================================
-            texteDurabilite: data.sustainability,
-            texteReplication: data.replicability || data.sustainability
-          }
-        });
-
-        console.log('✅ Demande créée avec ID:', nouveleDemande.id);
-
-        // ========================================
-        // B) Créer les activités avec relations imbriquées
-        // ========================================
-        if (data.activities && Array.isArray(data.activities) && data.activities.length > 0) {
-          console.log(`🔄 Création de ${data.activities.length} activité(s)...`);
-
-          for (let i = 0; i < data.activities.length; i++) {
-            const act = data.activities[i];
-
-            // Vérifier que l'activité existe et a des données valides
-            if (!act || !act.title) {
-              console.warn(`⚠️ Activité ${i} manquante ou invalide, ignorée`);
-              continue;
+              // ========================================
+              // Étape 7 - Durabilité
+              // ========================================
+              texteDurabilite: data.sustainability,
+              texteReplication: data.replicability || data.sustainability
             }
+          });
 
-            // Valider et parser les dates de l'activité
-            let dateDebut: Date;
-            let dateFin: Date;
+          console.log('✅ Demande créée avec ID:', nouveleDemande.id);
 
-            try {
-              dateDebut = act.start ? new Date(act.start) : new Date(data.activitiesStartDate);
-              dateFin = act.end ? new Date(act.end) : new Date(data.activitiesEndDate);
+          // ========================================
+          // B) Créer les activités avec relations imbriquées
+          // ========================================
+          if (data.activities && Array.isArray(data.activities) && data.activities.length > 0) {
+            console.log(`🔄 Création de ${data.activities.length} activité(s)...`);
 
-              // Vérifier que les dates sont valides
-              if (isNaN(dateDebut.getTime())) {
-                console.warn(`⚠️ Date de début invalide pour activité ${i}, utilisation de la date du projet`);
-                dateDebut = new Date(data.activitiesStartDate);
+            for (let i = 0; i < data.activities.length; i++) {
+              const act = data.activities[i];
+
+              // Vérifier que l'activité existe et a des données valides
+              if (!act || !act.title) {
+                console.warn(`⚠️ Activité ${i} manquante ou invalide, ignorée`);
+                continue;
               }
-              if (isNaN(dateFin.getTime())) {
-                console.warn(`⚠️ Date de fin invalide pour activité ${i}, utilisation de la date du projet`);
+
+              // Valider et parser les dates de l'activité
+              let dateDebut: Date;
+              let dateFin: Date;
+
+              try {
+                dateDebut = act.start ? new Date(act.start) : new Date(data.activitiesStartDate);
+                dateFin = act.end ? new Date(act.end) : new Date(data.activitiesEndDate);
+
+                // Vérifier que les dates sont valides
+                if (isNaN(dateDebut.getTime())) {
+                  console.warn(`⚠️ Date de début invalide pour activité ${i}, utilisation de la date du projet`);
+                  dateDebut = new Date(data.activitiesStartDate);
+                }
+                if (isNaN(dateFin.getTime())) {
+                  console.warn(`⚠️ Date de fin invalide pour activité ${i}, utilisation de la date du projet`);
+                  dateFin = new Date(data.activitiesEndDate);
+                }
+              } catch (error) {
+                console.warn(`⚠️ Erreur parsing dates activité ${i}:`, error);
+                dateDebut = new Date(data.activitiesStartDate);
                 dateFin = new Date(data.activitiesEndDate);
               }
-            } catch (error) {
-              console.warn(`⚠️ Erreur parsing dates activité ${i}:`, error);
-              dateDebut = new Date(data.activitiesStartDate);
-              dateFin = new Date(data.activitiesEndDate);
-            }
 
-            // Créer l'activité principale
-            const activiteCreee = await tx.activite.create({
-              data: {
-                idDemande: nouveleDemande.id,
-                ordre: i,
-                titre: act.title.trim(),
-                debut: dateDebut,
-                fin: dateFin,
-                resume: act.summary || ''
-              }
-            });
-
-            console.log(`  ✅ Activité ${i + 1} créée:`, act.title);
-
-            // Créer les sous-activités si présentes
-            if (act.subs && act.subs.length > 0) {
-              for (let j = 0; j < act.subs.length; j++) {
-                const sub = act.subs[j];
-
-                // Vérifier que la sous-activité existe
-                if (!sub) {
-                  console.warn(`⚠️ Sous-activité ${j} manquante`);
-                  continue;
-                }
-
-                await tx.sousActivite.create({
-                  data: {
-                    idActivite: activiteCreee.id,
-                    ordre: j,
-                    libelle: sub.label,
-                    resume: sub.summary || null
-                  }
-                });
-              }
-              console.log(`    ✅ ${act.subs.length} sous-activité(s) créée(s)`);
-            }
-
-            // Créer les lignes de budget si présentes
-            if (act.budget && act.budget.lines && Array.isArray(act.budget.lines) && act.budget.lines.length > 0) {
-              let lignesCreees = 0;
-
-              for (let k = 0; k < act.budget.lines.length; k++) {
-                const line = act.budget.lines[k];
-
-                // Vérifier que la ligne de budget existe et a des données valides
-                if (!line || !line.label) {
-                  console.warn(`⚠️ Ligne de budget ${k} manquante ou invalide, ignorée`);
-                  continue;
-                }
-
-                // Valider les montants
-                const montantCfa = Number(line.cfa) || 0;
-                const pctFpbg = Number(line.fpbgPct) || 0;
-                const pctCofin = Number(line.cofinPct) || 0;
-
-                // Vérifier que les pourcentages sont valides (0-100)
-                if (pctFpbg < 0 || pctFpbg > 100) {
-                  console.warn(`⚠️ Pourcentage FPBG invalide (${pctFpbg}) pour ligne "${line.label}", ajusté à 0`);
-                }
-                if (pctCofin < 0 || pctCofin > 100) {
-                  console.warn(`⚠️ Pourcentage cofinancement invalide (${pctCofin}) pour ligne "${line.label}", ajusté à 0`);
-                }
-
-                try {
-                  await tx.ligneBudget.create({
-                    data: {
-                      idActivite: activiteCreee.id,
-                      ordre: k,
-                      libelle: line.label.trim(),
-                      type: 'DIRECT',
-                      cfa: new Prisma.Decimal(montantCfa),
-                      pctFpbg: Math.max(0, Math.min(100, pctFpbg)),
-                      pctCofin: Math.max(0, Math.min(100, pctCofin))
-                    }
-                  });
-                  lignesCreees++;
-                } catch (error: any) {
-                  console.error(`❌ Erreur création ligne budget ${k}:`, error.message);
-                  // Continue avec les autres lignes
-                }
-              }
-              console.log(`    ✅ ${lignesCreees}/${act.budget.lines.length} ligne(s) de budget créée(s)`);
-            }
-          }
-        }
-
-        // ========================================
-        // C) Créer les risques
-        // ========================================
-        if (data.risks && data.risks.length > 0) {
-          for (let i = 0; i < data.risks.length; i++) {
-            const risk = data.risks[i];
-
-            // Vérifier que le risque existe
-            if (!risk) {
-              console.warn(`⚠️ Risque ${i} manquant`);
-              continue;
-            }
-
-            await tx.risque.create({
-              data: {
-                idDemande: nouveleDemande.id,
-                ordre: i,
-                description: risk.description,
-                mitigation: risk.mitigation
-              }
-            });
-          }
-          console.log(`✅ ${data.risks.length} risque(s) créé(s)`);
-        }
-
-        // ========================================
-        // D) Créer les pièces jointes (métadonnées uniquement - pas de fichiers réels)
-        // ========================================
-        if (data.attachments && Array.isArray(data.attachments) && data.attachments.length > 0) {
-          console.log(`🔄 Enregistrement de ${data.attachments.length} pièce(s) jointe(s) (métadonnées)...`);
-          let fichiersCreees = 0;
-
-          // Clés valides pour les documents
-          const validKeys = [
-            'LETTRE_MOTIVATION',
-            'CV',
-            'CERTIFICAT_ENREGISTREMENT',
-            'STATUTS_REGLEMENT',
-            'PV_ASSEMBLEE',
-            'RAPPORTS_FINANCIERS',
-            'RCCM',
-            'AGREMENT',
-            'ETATS_FINANCIERS',
-            'DOCUMENTS_STATUTAIRES',
-            'RIB',
-            'LETTRES_SOUTIEN',
-            'PREUVE_NON_FAILLITE',
-            'CARTOGRAPHIE',
-            'FICHE_CIRCUIT',
-            'BUDGET_DETAILLE',
-            'CHRONOGRAMME'
-          ];
-
-          for (const attachment of data.attachments) {
-            try {
-              // Vérifier que l'attachement a les propriétés requises
-              if (!attachment || !attachment.key || !attachment.fileName) {
-                console.warn(`⚠️ Pièce jointe invalide, ignorée`);
-                continue;
-              }
-
-              // Vérifier que la clé est valide
-              if (!validKeys.includes(attachment.key)) {
-                console.warn(`⚠️ Clé de document invalide: ${attachment.key}, ignoré`);
-                continue;
-              }
-
-              // Créer la pièce jointe avec les métadonnées uniquement
-              await tx.pieceJointe.create({
+              // Créer l'activité principale
+              const activiteCreee = await tx.activite.create({
                 data: {
                   idDemande: nouveleDemande.id,
-                  cle: attachment.key as any,
-                  nomFichier: attachment.fileName.trim(),
-                  typeMime: attachment.fileType || 'application/pdf',
-                  tailleOctets: attachment.fileSize || 0,
-                  cleStockage: attachment.fileName, // Nom du fichier uniquement
-                  url: '', // Pas d'URL pour l'instant
-                  requis: attachment.required || false
+                  ordre: i,
+                  titre: act.title.trim(),
+                  debut: dateDebut,
+                  fin: dateFin,
+                  resume: act.summary || ''
                 }
               });
 
-              fichiersCreees++;
-              console.log(`  ✅ Document "${attachment.fileName}" enregistré (${attachment.key})`);
-            } catch (error: any) {
-              console.error(`❌ Erreur enregistrement document ${attachment.key}:`, error.message);
-              // Continue avec les autres fichiers
+              console.log(`  ✅ Activité ${i + 1} créée:`, act.title);
+
+              // Créer les sous-activités si présentes
+              if (act.subs && act.subs.length > 0) {
+                for (let j = 0; j < act.subs.length; j++) {
+                  const sub = act.subs[j];
+
+                  // Vérifier que la sous-activité existe
+                  if (!sub) {
+                    console.warn(`⚠️ Sous-activité ${j} manquante`);
+                    continue;
+                  }
+
+                  await tx.sousActivite.create({
+                    data: {
+                      idActivite: activiteCreee.id,
+                      ordre: j,
+                      libelle: sub.label,
+                      resume: sub.summary || null
+                    }
+                  });
+                }
+                console.log(`    ✅ ${act.subs.length} sous-activité(s) créée(s)`);
+              }
+
+              // Créer les lignes de budget si présentes
+              if (act.budget && act.budget.lines && Array.isArray(act.budget.lines) && act.budget.lines.length > 0) {
+                let lignesCreees = 0;
+
+                for (let k = 0; k < act.budget.lines.length; k++) {
+                  const line = act.budget.lines[k];
+
+                  // Vérifier que la ligne de budget existe et a des données valides
+                  if (!line || !line.label) {
+                    console.warn(`⚠️ Ligne de budget ${k} manquante ou invalide, ignorée`);
+                    continue;
+                  }
+
+                  // Valider les montants
+                  const montantCfa = Number(line.cfa) || 0;
+                  const pctFpbg = Number(line.fpbgPct) || 0;
+                  const pctCofin = Number(line.cofinPct) || 0;
+
+                  // Vérifier que les pourcentages sont valides (0-100)
+                  if (pctFpbg < 0 || pctFpbg > 100) {
+                    console.warn(`⚠️ Pourcentage FPBG invalide (${pctFpbg}) pour ligne "${line.label}", ajusté à 0`);
+                  }
+                  if (pctCofin < 0 || pctCofin > 100) {
+                    console.warn(
+                      `⚠️ Pourcentage cofinancement invalide (${pctCofin}) pour ligne "${line.label}", ajusté à 0`
+                    );
+                  }
+
+                  try {
+                    await tx.ligneBudget.create({
+                      data: {
+                        idActivite: activiteCreee.id,
+                        ordre: k,
+                        libelle: line.label.trim(),
+                        type: 'DIRECT',
+                        cfa: new Prisma.Decimal(montantCfa),
+                        pctFpbg: Math.max(0, Math.min(100, pctFpbg)),
+                        pctCofin: Math.max(0, Math.min(100, pctCofin))
+                      }
+                    });
+                    lignesCreees++;
+                  } catch (error: any) {
+                    console.error(`❌ Erreur création ligne budget ${k}:`, error.message);
+                    // Continue avec les autres lignes
+                  }
+                }
+                console.log(`    ✅ ${lignesCreees}/${act.budget.lines.length} ligne(s) de budget créée(s)`);
+              }
             }
           }
-          console.log(`✅ ${fichiersCreees}/${data.attachments.length} pièce(s) jointe(s) enregistrée(s)`);
-        } else {
-          console.log('ℹ️  Aucune pièce jointe fournie');
-        }
 
-        // ========================================
-        // E) Gérer les cofinanceurs (collaborateurs) - COMMENTÉ
-        // ========================================
-        // if (data.collaborateurs && data.collaborateurs.length > 0) {
-        //   for (const collab of data.collaborateurs) {
-        //     await tx.cofinanceur.create({
-        //       data: {
-        //         idDemande: nouveleDemande.id,
-        //         source: `${collab.prenom} ${collab.nom} (${collab.email})`,
-        //         montant: new Prisma.Decimal(0), // Montant à définir plus tard
-        //         enNature: false
-        //       }
-        //     });
-        //   }
-        //   console.log(`✅ ${data.collaborateurs.length} collaborateur(s) enregistré(s)`);
-        // }
+          // ========================================
+          // C) Créer les risques
+          // ========================================
+          if (data.risks && data.risks.length > 0) {
+            for (let i = 0; i < data.risks.length; i++) {
+              const risk = data.risks[i];
 
-        // Retourner la demande complète avec toutes les relations
-        return tx.demandeSubvention.findUnique({
-          where: { id: nouveleDemande.id },
-          include: {
-            organisation: true,
-            soumisPar: {
-              select: {
-                id: true,
-                email: true,
-                prenom: true,
-                nom: true
+              // Vérifier que le risque existe
+              if (!risk) {
+                console.warn(`⚠️ Risque ${i} manquant`);
+                continue;
               }
-            },
-            activites: {
-              include: {
-                sousActivites: true,
-                lignesBudget: true
-              },
-              orderBy: { ordre: 'asc' }
-            },
-            risques: {
-              orderBy: { ordre: 'asc' }
-            },
-            piecesJointes: true
-            // cofinanceurs: true  // COMMENTÉ - Cofinanceur désactivé
+
+              await tx.risque.create({
+                data: {
+                  idDemande: nouveleDemande.id,
+                  ordre: i,
+                  description: risk.description,
+                  mitigation: risk.mitigation
+                }
+              });
+            }
+            console.log(`✅ ${data.risks.length} risque(s) créé(s)`);
           }
-        });
-      }, { timeout: 25000 });
+
+          // ========================================
+          // D) Créer les pièces jointes (métadonnées uniquement - pas de fichiers réels)
+          // ========================================
+          if (data.attachments && Array.isArray(data.attachments) && data.attachments.length > 0) {
+            console.log(`🔄 Enregistrement de ${data.attachments.length} pièce(s) jointe(s) (métadonnées)...`);
+            let fichiersCreees = 0;
+
+            // Clés valides pour les documents
+            const validKeys = [
+              'LETTRE_MOTIVATION',
+              'CV',
+              'CERTIFICAT_ENREGISTREMENT',
+              'STATUTS_REGLEMENT',
+              'PV_ASSEMBLEE',
+              'RAPPORTS_FINANCIERS',
+              'RCCM',
+              'AGREMENT',
+              'ETATS_FINANCIERS',
+              'DOCUMENTS_STATUTAIRES',
+              'RIB',
+              'LETTRES_SOUTIEN',
+              'PREUVE_NON_FAILLITE',
+              'CARTOGRAPHIE',
+              'FICHE_CIRCUIT',
+              'BUDGET_DETAILLE',
+              'CHRONOGRAMME'
+            ];
+
+            for (const attachment of data.attachments) {
+              try {
+                // Vérifier que l'attachement a les propriétés requises
+                if (!attachment || !attachment.key || !attachment.fileName) {
+                  console.warn(`⚠️ Pièce jointe invalide, ignorée`);
+                  continue;
+                }
+
+                // Vérifier que la clé est valide
+                if (!validKeys.includes(attachment.key)) {
+                  console.warn(`⚠️ Clé de document invalide: ${attachment.key}, ignoré`);
+                  continue;
+                }
+
+                // Créer la pièce jointe avec les métadonnées uniquement
+                await tx.pieceJointe.create({
+                  data: {
+                    idDemande: nouveleDemande.id,
+                    cle: attachment.key as any,
+                    nomFichier: attachment.fileName.trim(),
+                    typeMime: attachment.fileType || 'application/pdf',
+                    tailleOctets: attachment.fileSize || 0,
+                    cleStockage: attachment.fileName, // Nom du fichier uniquement
+                    url: '', // Pas d'URL pour l'instant
+                    requis: attachment.required || false
+                  }
+                });
+
+                fichiersCreees++;
+                console.log(`  ✅ Document "${attachment.fileName}" enregistré (${attachment.key})`);
+              } catch (error: any) {
+                console.error(`❌ Erreur enregistrement document ${attachment.key}:`, error.message);
+                // Continue avec les autres fichiers
+              }
+            }
+            console.log(`✅ ${fichiersCreees}/${data.attachments.length} pièce(s) jointe(s) enregistrée(s)`);
+          } else {
+            console.log('ℹ️  Aucune pièce jointe fournie');
+          }
+
+          // ========================================
+          // E) Gérer les cofinanceurs (collaborateurs) - COMMENTÉ
+          // ========================================
+          // if (data.collaborateurs && data.collaborateurs.length > 0) {
+          //   for (const collab of data.collaborateurs) {
+          //     await tx.cofinanceur.create({
+          //       data: {
+          //         idDemande: nouveleDemande.id,
+          //         source: `${collab.prenom} ${collab.nom} (${collab.email})`,
+          //         montant: new Prisma.Decimal(0), // Montant à définir plus tard
+          //         enNature: false
+          //       }
+          //     });
+          //   }
+          //   console.log(`✅ ${data.collaborateurs.length} collaborateur(s) enregistré(s)`);
+          // }
+
+          // Retourner la demande complète avec toutes les relations
+          return tx.demandeSubvention.findUnique({
+            where: { id: nouveleDemande.id },
+            include: {
+              organisation: true,
+              soumisPar: {
+                select: {
+                  id: true,
+                  email: true,
+                  prenom: true,
+                  nom: true
+                }
+              },
+              activites: {
+                include: {
+                  sousActivites: true,
+                  lignesBudget: true
+                },
+                orderBy: { ordre: 'asc' }
+              },
+              risques: {
+                orderBy: { ordre: 'asc' }
+              },
+              piecesJointes: true
+              // cofinanceurs: true  // COMMENTÉ - Cofinanceur désactivé
+            }
+          });
+        },
+        { timeout: 125000 }
+      );
 
       console.log('🎉 Projet soumis avec succès !');
 
@@ -509,7 +514,7 @@ export class DemandeSubventionService {
             dateDebutActivites: demande.dateDebutActivites,
             dateFinActivites: demande.dateFinActivites,
             activitiesSummary: demande.resumeActivites,
-            activites: demande.activites?.map(act => {
+            activites: demande.activites?.map((act) => {
               // Garantir que start et end sont toujours des strings non-nullables
               const startDate = act.debut instanceof Date ? act.debut : new Date();
               const endDate = act.fin instanceof Date ? act.fin : new Date();
@@ -519,19 +524,21 @@ export class DemandeSubventionService {
                 start: startDate.toISOString().split('T')[0],
                 end: endDate.toISOString().split('T')[0],
                 resume: act.resume,
-                subs: act.sousActivites?.map(sub => ({
-                  label: sub.libelle,
-                  summary: sub.resume || undefined
-                })) || [],
-                lignesBudget: act.lignesBudget?.map(ligne => ({
-                  libelle: ligne.libelle,
-                  cfa: Number(ligne.cfa), // Convertir Decimal en number pour le JSON
-                  fpbgPct: ligne.pctFpbg,
-                  cofinPct: ligne.pctCofin
-                })) || []
+                subs:
+                  act.sousActivites?.map((sub) => ({
+                    label: sub.libelle,
+                    summary: sub.resume || undefined
+                  })) || [],
+                lignesBudget:
+                  act.lignesBudget?.map((ligne) => ({
+                    libelle: ligne.libelle,
+                    cfa: Number(ligne.cfa), // Convertir Decimal en number pour le JSON
+                    fpbgPct: ligne.pctFpbg,
+                    cofinPct: ligne.pctCofin
+                  })) || []
               };
             }),
-            risques: demande.risques?.map(r => ({
+            risques: demande.risques?.map((r) => ({
               description: r.description,
               mitigation: r.mitigation
             })),
@@ -546,8 +553,8 @@ export class DemandeSubventionService {
 
           // Calculer le montant total
           let montantTotal = 0;
-          demande.activites?.forEach(activite => {
-            activite.lignesBudget?.forEach(ligne => {
+          demande.activites?.forEach((activite) => {
+            activite.lignesBudget?.forEach((ligne) => {
               montantTotal += Number(ligne.cfa) || 0;
             });
           });
@@ -560,7 +567,7 @@ export class DemandeSubventionService {
 
           console.log('✅ Emails envoyés avec succès !');
         } catch (emailError: any) {
-          console.error('⚠️  ATTENTION: Erreur lors de l\'envoi des emails (le projet a bien été soumis):');
+          console.error("⚠️  ATTENTION: Erreur lors de l'envoi des emails (le projet a bien été soumis):");
           console.error('   ', emailError.message);
           // Ne pas lancer d'erreur, le projet est déjà soumis
         }
@@ -571,7 +578,7 @@ export class DemandeSubventionService {
       console.error('\n❌ =============================================');
       console.error('❌ ERREUR LORS DE LA SOUMISSION');
       console.error('❌ =============================================');
-      console.error('Type d\'erreur:', error.constructor?.name);
+      console.error("Type d'erreur:", error.constructor?.name);
       console.error('Message:', error.message);
       console.error('Stack:', error.stack);
 
@@ -704,7 +711,7 @@ export class DemandeSubventionService {
 
           return demandeCree;
         },
-        { timeout: 25000 }
+        { timeout: 125000 }
       );
 
       return demande;
@@ -770,7 +777,7 @@ export class DemandeSubventionService {
             }
           });
         },
-        { timeout: 25000 }
+        { timeout: 125000 }
       );
 
       // Calculer le montantTotal pour chaque demande
@@ -862,7 +869,7 @@ export class DemandeSubventionService {
             }
           });
         },
-        { timeout: 25000 }
+        { timeout: 125000 }
       );
 
       // 3️⃣ DOUBLE VÉRIFICATION : EMAIL + ID pour garantir que c'est le bon utilisateur

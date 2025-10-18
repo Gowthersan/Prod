@@ -202,7 +202,7 @@ Pour la production, créez `src/environments/environment.ts` :
 ```typescript
 export const environment = {
   production: true,
-  apiUrl: 'https://api.fpbg.org/api',
+  apiUrl: 'http://localhost:4000',
   whatsappNumber: '+241XXXXXXXXX',
   enableDebugMode: false,
 };
@@ -677,7 +677,7 @@ Assurez-vous de configurer :
 ```typescript
 export const environment = {
   production: true,
-  apiUrl: 'https://api.fpbg.org/api',
+  apiUrl: 'http://localhost:4000',
   whatsappNumber: '+241XXXXXXXXX',
   enableDebugMode: false,
   googleAnalyticsId: 'UA-XXXXXXXXX-X',

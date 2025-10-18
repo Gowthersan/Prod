@@ -220,9 +220,9 @@
             </div>
           </div>
 
-          <!-- Lieu d’exécution -->
+          <!-- Lieu d'exécution -->
           <div>
-            <label class="block mb-1 text-sm font-medium">Lieu d’exécution (≤ 200 mots)</label>
+            <label class="block mb-1 text-sm font-medium">Lieu d'exécution (≤ 200 mots)</label>
             <textarea
               rows="3"
               class="w-full px-3 py-2 border rounded-md"
@@ -231,6 +231,13 @@
             <div class="mt-1 text-[11px] text-slate-500">
               {{ countWords(stepProp.get('location')?.value) }} / 200 mots
             </div>
+            <p
+              *ngIf="stepProp.get('location')?.errors?.['wordLimit']"
+              class="mt-1 text-xs text-red-600"
+            >
+              Limite dépassée ({{stepProp.get('location')?.errors?.['wordLimit'].actual}}
+              / {{stepProp.get('location')?.errors?.['wordLimit'].max}} mots)
+            </p>
           </div>
 
           <!-- Groupe cible -->
@@ -244,6 +251,13 @@
             <div class="mt-1 text-[11px] text-slate-500">
               {{ countWords(stepProp.get('targetGroup')?.value) }} / 200 mots
             </div>
+            <p
+              *ngIf="stepProp.get('targetGroup')?.errors?.['wordLimit']"
+              class="mt-1 text-xs text-red-600"
+            >
+              Limite dépassée ({{stepProp.get('targetGroup')?.errors?.['wordLimit'].actual}}
+              / {{stepProp.get('targetGroup')?.errors?.['wordLimit'].max}} mots)
+            </p>
           </div>
 
           <!-- Contexte & justification -->
@@ -372,26 +386,46 @@
                 formControlName="endDate"
               />
             </div>
+            <!-- Erreurs de validation des dates du projet -->
+            <div class="sm:col-span-2">
+              <p
+                *ngIf="activitiesHeader.errors?.['dateRange']"
+                class="mt-1 text-xs text-red-600"
+              >
+                ⚠️ La date de fin doit être postérieure à la date de début.
+              </p>
+              <p
+                *ngIf="activitiesHeader.errors?.['maxMonths']"
+                class="mt-1 text-xs text-red-600"
+              >
+                ⚠️ La durée du projet ({{ activitiesHeader.errors?.['maxMonths'].actual }} mois) dépasse la durée maximale autorisée de <b>{{ activitiesHeader.errors?.['maxMonths'].max }} mois</b> pour ce type de subvention.
+              </p>
+            </div>
             <div class="sm:col-span-2">
               <label class="block mb-1 text-sm font-medium"
                 >Activités principales (≤ 200 mots)</label
               >
               <textarea
                 rows="4"
+                [class.border-red-400]="countWords(activitiesHeader.get('summary')?.value) > 200"
                 class="w-full px-3 py-2 border rounded-md"
                 formControlName="summary"
                 placeholder="Décrivez les grandes lignes des activités..."
               ></textarea>
-              <div class="mt-1 text-[11px] text-slate-500">
-                {{ countWords(activitiesHeader.get('summary')?.value) }} / 200 mots
+              <div class="flex justify-between items-center mt-1 text-[11px]">
+                <span
+                  [class.text-red-600]="countWords(activitiesHeader.get('summary')?.value) > 200"
+                  [class.text-slate-500]="countWords(activitiesHeader.get('summary')?.value) <= 200"
+                >
+                  {{ countWords(activitiesHeader.get('summary')?.value) }} / 200 mots
+                </span>
+                <span
+                  *ngIf="countWords(activitiesHeader.get('summary')?.value) > 200"
+                  class="text-red-600 font-medium"
+                >
+                  ⚠️ Résumé trop long
+                </span>
               </div>
-              <p
-                *ngIf="activitiesHeader.get('summary')?.errors?.['wordLimit']"
-                class="mt-1 text-xs text-red-600"
-              >
-                Limite dépassée ({{activitiesHeader.get('summary')?.errors?.['wordLimit'].actual}} /
-                {{activitiesHeader.get('summary')?.errors?.['wordLimit'].max}}).
-              </p>
             </div>
           </div>
 
@@ -449,9 +483,24 @@
                 [id]="'act-title-' + i"
                 type="text"
                 class="w-full px-3 py-2 border rounded-lg border-slate-300 placeholder:text-slate-400 focus:border-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-600/30"
+                [class.border-red-400]="a.get('title')?.value?.length > 50"
                 formControlName="title"
                 placeholder="Ex : Sensibilisation communautaire"
+                maxlength="50"
               />
+
+              <!-- Compteur de caractères -->
+              <div class="mt-1 text-xs text-slate-500">
+                {{ a.get('title')?.value?.length || 0 }} / 50 caractères
+              </div>
+
+              <!-- Message d'erreur en bas -->
+              <p
+                *ngIf="a.get('title')?.value?.length > 50"
+                class="mt-1 text-xs text-red-600"
+              >
+                ⚠️ Le titre ne doit pas dépasser 50 caractères.
+              </p>
 
               <!-- Dates -->
               <div class="grid gap-2 sm:gap-4 sm:grid-cols-2">
@@ -484,6 +533,28 @@
                   />
                 </div>
 
+                <!-- Erreurs de validation des dates d'activité -->
+                <div class="sm:col-span-2">
+                  <p
+                    *ngIf="a.errors?.['dateRange']"
+                    class="mt-1 text-xs text-red-600"
+                  >
+                    ⚠️ La date de fin doit être postérieure à la date de début.
+                  </p>
+                  <p
+                    *ngIf="a.errors?.['outOfProjectWindow'] === 'before'"
+                    class="mt-1 text-xs text-red-600"
+                  >
+                    ⚠️ La date de début de l'activité est antérieure à la date de début du projet ({{ activitiesHeader.get('startDate')?.value }}).
+                  </p>
+                  <p
+                    *ngIf="a.errors?.['outOfProjectWindow'] === 'after'"
+                    class="mt-1 text-xs text-red-600"
+                  >
+                    ⚠️ La date de fin de l'activité est postérieure à la date de fin du projet ({{ activitiesHeader.get('endDate')?.value }}).
+                  </p>
+                </div>
+
                 <!-- Description courte -->
                 <div class="md:col-span-2">
                   <label class="block text-sm font-medium text-slate-700"
@@ -492,18 +563,24 @@
                   <textarea
                     rows="3"
                     formControlName="summary"
-                    placeholder="Bref résumé de l’activité…"
+                    placeholder="Bref résumé de l'activité…"
+                    [class.border-red-400]="countWords(a.get('summary')?.value) > 50"
                     class="w-full px-3 py-2 mt-1 text-sm bg-white border rounded-md shadow-sm border-slate-300 placeholder:text-slate-400 focus:border-green-500 focus:ring-2 focus:ring-green-200"
                   ></textarea>
-                  <div class="mt-1 text-[11px] text-slate-500">
-                    {{ countWords(a.get('summary')?.value) }} / 50 mots
+                  <div class="flex justify-between items-center mt-1 text-[11px]">
+                    <span
+                      [class.text-red-600]="countWords(a.get('summary')?.value) > 50"
+                      [class.text-slate-500]="countWords(a.get('summary')?.value) <= 50"
+                    >
+                      {{ countWords(a.get('summary')?.value) }} / 50 mots
+                    </span>
+                    <span
+                      *ngIf="countWords(a.get('summary')?.value) > 50"
+                      class="text-red-600 font-medium"
+                    >
+                      ⚠️ Description trop longue
+                    </span>
                   </div>
-                  <p
-                    class="mt-1 text-xs text-rose-600"
-                    *ngIf="a.get('summary')?.errors?.['wordLimit'] as e"
-                  >
-                    Limite dépassée ({{ e.actual }} / {{ e.max }} mots).
-                  </p>
                 </div>
 
                 <!-- Sous-activités -->
@@ -964,92 +1041,104 @@
                     </table>
                   </div>
 
-                  <!-- Alerte : règle 10% indirects (vue projet) -->
-                  <!-- Alerte : règle 10% indirects (vue projet) -->
+                  <!-- Alerte : erreurs frais indirects activité (affichée juste après le tableau) -->
                   <div
-                    *ngIf="indirectCapError"
+                    *ngIf="activityOverheadTooHigh(selectedBudgetActivity!)"
                     class="px-3 py-2 mt-3 text-sm border rounded-md border-amber-200 bg-amber-50 text-amber-800"
                   >
-                    Les frais de fonctionnement <strong>indirects</strong> dépassent
-                    <strong>10&nbsp;% des coûts directs</strong>.
+                    <div>
+                      Les frais de fonctionnement <strong>indirects</strong> dépassent
+                      <strong>10&nbsp;% des coûts directs</strong> de cette activité.
+                    </div>
+                  </div>
+
+                  <!-- Frais indirects pour cette activité -->
+                  <div class="p-4 mt-4 border rounded-md bg-slate-50 border-slate-200">
+                    <div class="flex items-start justify-between mb-3">
+                      <div>
+                        <h5 class="text-sm font-semibold text-slate-800">Frais indirects (overheads)</h5>
+                        <p class="text-xs text-slate-500">
+                          Plafond : au plus <strong>10 %</strong> des <strong>coûts directs</strong> de cette activité.
+                        </p>
+                        <div class="mt-1 text-[12px] text-slate-600">
+                          Coûts directs : <b>{{ activityDirectCosts(selectedBudgetActivity!) | number : '1.0-0' }} FCFA</b> · Plafond (10 %)
+                          : <b>{{ activityAllowedIndirectMax(selectedBudgetActivity!) | number : '1.0-0' }} FCFA</b>
+                        </div>
+                      </div>
+                      <div class="text-right">
+                        <div class="text-sm">
+                          Part actuelle :
+                          <strong
+                            [class.text-emerald-700]="!activityOverheadTooHigh(selectedBudgetActivity!)"
+                            [class.text-amber-700]="activityOverheadTooHigh(selectedBudgetActivity!)"
+                          >
+                            {{ activityIndirectShare(selectedBudgetActivity!) | percent : '1.0-1' }}
+                          </strong>
+                        </div>
+                        <div class="text-xs text-slate-500">
+                          Total activité : {{ activityTotal(selectedBudgetActivity!) | number : '1.0-0' }} FCFA
+                        </div>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label class="block mb-1 text-sm font-medium text-slate-700">
+                        Montant des frais indirects (FCFA)
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        [max]="activityAllowedIndirectMax(selectedBudgetActivity!)"
+                        [formControl]="$any(activityIndirectControl(selectedBudgetActivity!))"
+                        class="w-full px-3 py-2 text-sm bg-white border rounded-md shadow-sm border-slate-300 focus:border-green-500 focus:ring-2 focus:ring-green-200"
+                        placeholder="0"
+                      />
+                      <div class="mt-1 text-[12px] text-slate-500">
+                        Plafond autorisé : <b>{{ activityAllowedIndirectMax(selectedBudgetActivity!) | number : '1.0-0' }} FCFA</b>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
           </ng-container>
 
-          <!-- Frais indirects (global) -->
-          <!-- Frais indirects (global) -->
+          <!-- Alerte globale : Budget total du projet hors limites -->
           <div
-            class="p-4 mt-5 bg-white border rounded-md shadow-sm border-slate-200"
-            [formGroup]="form"
+            *ngIf="budgetTooLowSignal() || budgetTooHighSignal()"
+            class="p-4 mt-5 border-2 rounded-lg border-red-300 bg-red-50"
           >
-            <div class="flex items-start justify-between">
-              <div>
-                <h4 class="text-sm font-semibold text-slate-800">Frais indirects (overheads)</h4>
-                <p class="text-xs text-slate-500">
-                  Plafond : au plus <strong>10 %</strong> du <strong>budget total</strong> (toutes
-                  activités).
-                </p>
-                <div class="mt-1 text-[12px] text-slate-600">
-                  Coûts directs : <b>{{ sumDirect() | number : '1.0-0' }} FCFA</b> · Plafond (10 %)
-                  : <b>{{ allowedIndirectMax() | number : '1.0-0' }} FCFA</b>
-                </div>
-              </div>
-              <div class="text-right">
-                <div class="text-sm">
-                  Part actuelle :
-                  <strong
-                    [class.text-emerald-700]="!indirectCapError"
-                    [class.text-amber-700]="indirectCapError"
-                  >
-                    {{ indirectShare() | percent : '1.0-1' }}
-                  </strong>
-                </div>
-                <div class="text-xs text-slate-500">
-                  Total projet : {{ totalProject() | number : '1.0-0' }} FCFA
-                </div>
-              </div>
-            </div>
-
-            <div class="grid grid-cols-1 gap-2 mt-3 sm:gap-3 sm:grid-cols-2">
-              <div>
-                <label class="block mb-1 text-sm font-medium text-slate-700">
-                  Montant des frais indirects (FCFA)
-                </label>
-                <input
-                  type="number"
-                  min="0"
-                  [max]="allowedIndirectMax()"
-                  formControlName="indirectOverheads"
-                  class="w-full px-3 py-2 text-sm bg-white border rounded-md shadow-sm border-slate-300 focus:border-green-500 focus:ring-2 focus:ring-green-200"
-                  placeholder="0"
+            <div class="flex items-start gap-3">
+              <svg
+                class="w-6 h-6 text-red-600 flex-shrink-0 mt-0.5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
                 />
-                <div class="mt-1 text-[12px] text-slate-500">
-                  Plafond autorisé : <b>{{ allowedIndirectMax() | number : '1.0-0' }} FCFA</b>
-                </div>
-
-                <div
-                  *ngIf="indirectCapError"
-                  class="mt-2 inline-flex items-center gap-2 rounded-md border border-amber-200 bg-amber-50 px-2 py-1 text-[12px] text-amber-800"
-                >
-                  <svg
-                    class="h-3.5 w-3.5"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    aria-hidden="true"
-                  >
-                    <path
-                      d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"
-                    ></path>
-                    <line x1="12" y1="9" x2="12" y2="13"></line>
-                    <line x1="12" y1="17" x2="12.01" y2="17"></line>
-                  </svg>
-                  Les frais indirects dépassent <b>10 % du budget total</b>.
+              </svg>
+              <div class="flex-1">
+                <h4 class="text-base font-semibold text-red-900 mb-2">
+                  ⚠️ Budget total du projet hors limites
+                </h4>
+                <div class="text-sm text-red-800">
+                  <div class="mb-2">
+                    Budget total actuel : <strong class="text-lg">{{ totalProject() | number : '1.0-0' }} FCFA</strong>
+                  </div>
+                  <div class="mb-2">
+                    Plage autorisée : <strong>{{ budgetMin() | number : '1.0-0' }}</strong> – <strong>{{ budgetMax() | number : '1.0-0' }}</strong> FCFA
+                  </div>
+                  <div *ngIf="budgetTooLowSignal()" class="p-2 mt-2 bg-red-100 rounded">
+                    ❌ Le budget total du projet est <strong>inférieur</strong> au montant minimum requis de <strong>{{ budgetMin() | number : '1.0-0' }} FCFA</strong> pour ce type de subvention.
+                  </div>
+                  <div *ngIf="budgetTooHighSignal()" class="p-2 mt-2 bg-red-100 rounded">
+                    ❌ Le budget total du projet <strong>dépasse</strong> le montant maximum autorisé de <strong>{{ budgetMax() | number : '1.0-0' }} FCFA</strong> pour ce type de subvention.
+                  </div>
                 </div>
               </div>
             </div>
@@ -1779,15 +1868,51 @@
 
                       <div class="p-3 border rounded-md">
                         <div class="text-slate-500">Total projet</div>
-                        <div class="text-lg font-semibold">
+                        <div
+                          class="text-lg font-semibold"
+                          [class.text-red-600]="budgetTooLow()"
+                        >
                           {{ totalProject() | number : '1.0-0' }} FCFA
                         </div>
                         <div class="text-xs text-slate-500">
                           Inclut coûts directs + frais indirects
                         </div>
+                        <div class="mt-1 text-xs text-slate-500">
+                          Plage autorisée : <b>{{ budgetMin() | number : '1.0-0' }}</b> – <b>{{ budgetMax() | number : '1.0-0' }}</b> FCFA
+                        </div>
+                        <div
+                          *ngIf="budgetTooLow() || budgetTooHigh()"
+                          class="mt-2 rounded border border-red-200 bg-red-50 px-2 py-1 text-[12px] text-red-800"
+                        >
+                          <div class="flex items-start gap-1">
+                            <span>⚠️</span>
+                            <span *ngIf="budgetTooLow()">Le montant total est <b>inférieur</b> au budget minimum requis pour ce type de subvention.</span>
+                            <span *ngIf="budgetTooHigh()">Le montant total <b>dépasse</b> le budget maximum requis pour ce type de subvention.</span>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
+
+                  <!-- Alerte globale : erreurs de budget et frais indirects -->
+                  <div
+                    *ngIf="overheadTooHighSignal() || budgetTooLowSignal() || budgetTooHighSignal()"
+                    class="px-3 py-2 mt-3 text-sm border rounded-md border-amber-200 bg-amber-50 text-amber-800"
+                  >
+                    <div *ngIf="overheadTooHighSignal()" class="mb-2">
+                      Les frais de fonctionnement <strong>indirects</strong> dépassent
+                      <strong>10&nbsp;% des coûts directs</strong>.
+                    </div>
+                    <div *ngIf="budgetTooLowSignal()">
+                      Le budget total est <strong>inférieur</strong> au montant minimum de
+                      <strong>{{ budgetMin() | number : '1.0-0' }} FCFA</strong> pour ce type de subvention.
+                    </div>
+                    <div *ngIf="budgetTooHighSignal()">
+                      Le budget total <strong>dépasse</strong> le montant maximum de
+                      <strong>{{ budgetMax() | number : '1.0-0' }} FCFA</strong> pour ce type de subvention.
+                    </div>
+                  </div>
+
                   <!-- Ventilation automatique des frais indirects (affichage) -->
                   <div
                     *ngIf="indirectBreakdown().length > 0 && activitiesWithLinesCount() > 1"

@@ -18,6 +18,7 @@ export class Otp {
 
   email = signal<string>('');
   error = signal<string | null>(null);
+  success = signal<string | null>(null);
   digits = signal<string[]>(['', '', '', '', '', '']);
   counter = signal<number>(60);
   currentOtp = signal<string | null>(null);
@@ -49,26 +50,39 @@ export class Otp {
 
   resend() {
     const p = this._getPending();
-    if (!p) return;
+    if (!p) {
+      this.error.set('Session expirée. Veuillez recommencer l\'inscription.');
+      this.success.set(null);
+      return;
+    }
 
     this.error.set(null);
+    this.success.set(null);
 
     // ====================================
     // Appeler le backend pour générer et envoyer un nouveau OTP via Nodemailer
     // ====================================
     this.auth.resendOtp(p.email).subscribe({
       next: (response: any) => {
-        console.log('✅ Nouveau OTP généré et envoyé via Nodemailer');
+        console.log('✅ Nouveau OTP généré et envoyé via Nodemailer:', response);
 
         this.counter.set(60);
         this._startTimer();
         // Mettre à jour l'expiration
         p.expiresAt = Date.now() + 10 * 60 * 1000;
         this._savePending(p);
+
+        // Afficher un message de succès
+        this.success.set('Un nouveau code a été envoyé à votre adresse email.');
       },
       error: (err) => {
         console.error('❌ Erreur resend:', err);
-        this.error.set('Erreur lors du renvoi du code.');
+        const msg = err.message || '';
+        if (msg.includes('Aucune inscription') || msg.includes('en attente')) {
+          this.error.set('Session expirée. Veuillez recommencer l\'inscription.');
+        } else {
+          this.error.set('Erreur lors du renvoi du code. Veuillez réessayer.');
+        }
       },
     });
   }

@@ -10,7 +10,7 @@ import aapRoutes from './routes/aap.routes.js';
 import authRoutes from './routes/auth.routes.js';
 import demandeSubventionRoutes from './routes/demandeSubvention.routes.js';
 import organisationRoutes from './routes/organisation.routes.js';
-import projetRoutes from './routes/projet.routes.js';
+// import projetRoutes from './routes/projet.routes.js';
 import supportRoutes from './routes/support.routes.js';
 import { verifyEmailConfig } from './utils/mailer.js';
 
@@ -30,7 +30,7 @@ const __dirname = path.dirname(__filename);
 const allowedOrigins = [
   'http://localhost:4000', // Dev local
   'https://guichetnumerique.fpbg.ga',
-  'https://api.fpbg.org/api', // Frontend production
+  'http://localhost:4000', // Frontend production
   process.env.FRONT_URL // Valeur configurable via .env
 ].filter(Boolean); // Supprime les valeurs undefined
 
@@ -108,7 +108,7 @@ app.get('/health', (req, res) => {
 /* -------------------------------------------------------------------------- */
 
 app.use('/api/auth', authRoutes);
-app.use('/api/aprojet-v1', projetRoutes);
+// app.use('/api/aprojet-v1', projetRoutes);
 app.use('/api/organisations', organisationRoutes);
 app.use('/api/aap', aapRoutes);
 app.use('/api/demandes', demandeSubventionRoutes);

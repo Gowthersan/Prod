@@ -184,7 +184,7 @@ export class AuthService {
 
   // === RESEND OTP : redemander un OTP via backend ===
   resendOtp(email: string): Observable<{ email: string }> {
-    return this.http.post<any>(`${this.apiUrl}/resend-otp`, { email }).pipe(
+    return this.http.post<any>(`${this.apiUrl}/resend-otp`, { email }, { withCredentials: true }).pipe(
       map((response) => {
         console.log('✅ OTP renvoyé:', response);
         // L'email OTP est envoyé automatiquement par le backend via Nodemailer
@@ -192,7 +192,8 @@ export class AuthService {
       }),
       catchError((error) => {
         console.error('❌ Erreur resend OTP:', error);
-        return throwError(() => new Error('RESEND_FAILED'));
+        const msg = error?.error?.message || error?.message || 'RESEND_FAILED';
+        return throwError(() => new Error(msg));
       })
     );
   }

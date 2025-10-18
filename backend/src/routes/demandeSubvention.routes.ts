@@ -57,39 +57,35 @@ const upload = multer({
  * @access  Privé (utilisateur authentifié)
  * @body    JSON avec toutes les données du projet
  */
-router.post(
-    '/submit-json',
-    authenticate,
-    async (req, res: Response, next: NextFunction) => {
-      try {
-        const authReq = req as AuthRequest;
-        if (!authReq.user) throw new Error('Authentification requise.');
+router.post('/submit-json', authenticate, async (req, res: Response, next: NextFunction) => {
+  try {
+    const authReq = req as AuthRequest;
+    if (!authReq.user) throw new Error('Authentification requise.');
 
-        const idUtilisateur = authReq.user.userId;
-        const projectData = authReq.body;
+    const idUtilisateur = authReq.user.userId;
+    const projectData = authReq.body;
 
-        console.log('📥 Réception soumission projet (JSON) :');
-        console.log('  - Utilisateur:', idUtilisateur);
-        console.log('  - Titre:', projectData.title);
+    console.log('📥 Réception soumission projet (JSON) :');
+    console.log('  - Utilisateur:', idUtilisateur);
+    console.log('  - Titre:', projectData.title);
 
-        // Appeler le service pour créer la demande (sans fichiers)
-        const demande = await demandeSubventionService.soumettre(
-            projectData,
-            {}, // Pas de fichiers
-            [], // Pas d'index de fichiers
-            idUtilisateur
-        );
+    // Appeler le service pour créer la demande (sans fichiers)
+    const demande = await demandeSubventionService.soumettre(
+      projectData,
+      {}, // Pas de fichiers
+      [], // Pas d'index de fichiers
+      idUtilisateur
+    );
 
-        res.status(201).json({
-          message: 'Projet soumis avec succès.',
-          data: demande
-        });
-      } catch (error: any) {
-        console.error('❌ Erreur soumission projet:', error);
-        next(error);
-      }
-    }
-);
+    res.status(201).json({
+      message: 'Projet soumis avec succès.',
+      data: demande
+    });
+  } catch (error: any) {
+    console.error('❌ Erreur soumission projet:', error);
+    next(error);
+  }
+});
 
 // ========================================
 // Route avec fichiers : Soumission complète du projet
@@ -105,121 +101,101 @@ router.post(
  *          - etc.
  */
 router.post(
-    '/submit',
-    authenticate,
-    upload.fields([
-      { name: 'attachment_LETTRE_MOTIVATION', maxCount: 1 },
-      { name: 'attachment_CV', maxCount: 1 },
-      { name: 'attachment_CERTIFICAT_ENREGISTREMENT', maxCount: 1 },
-      { name: 'attachment_STATUTS_REGLEMENT', maxCount: 1 },
-      { name: 'attachment_PV_ASSEMBLEE', maxCount: 1 },
-      { name: 'attachment_RAPPORTS_FINANCIERS', maxCount: 1 },
-      { name: 'attachment_RCCM', maxCount: 1 },
-      { name: 'attachment_AGREMENT', maxCount: 1 },
-      { name: 'attachment_ETATS_FINANCIERS', maxCount: 1 },
-      { name: 'attachment_DOCUMENTS_STATUTAIRES', maxCount: 1 },
-      { name: 'attachment_RIB', maxCount: 1 },
-      { name: 'attachment_LETTRES_SOUTIEN', maxCount: 1 },
-      { name: 'attachment_PREUVE_NON_FAILLITE', maxCount: 1 },
-      { name: 'attachment_CARTOGRAPHIE', maxCount: 1 },
-      { name: 'attachment_FICHE_CIRCUIT', maxCount: 1 },
-      { name: 'attachment_BUDGET_DETAILLE', maxCount: 1 },
-      { name: 'attachment_CHRONOGRAMME', maxCount: 1 }
-    ]),
-    async (req, res: Response, next: NextFunction) => {
+  '/submit',
+  authenticate,
+  upload.fields([
+    { name: 'attachment_LETTRE_MOTIVATION', maxCount: 1 },
+    { name: 'attachment_CV', maxCount: 1 },
+    { name: 'attachment_CERTIFICAT_ENREGISTREMENT', maxCount: 1 },
+    { name: 'attachment_STATUTS_REGLEMENT', maxCount: 1 },
+    { name: 'attachment_PV_ASSEMBLEE', maxCount: 1 },
+    { name: 'attachment_RAPPORTS_FINANCIERS', maxCount: 1 },
+    { name: 'attachment_RCCM', maxCount: 1 },
+    { name: 'attachment_AGREMENT', maxCount: 1 },
+    { name: 'attachment_ETATS_FINANCIERS', maxCount: 1 },
+    { name: 'attachment_DOCUMENTS_STATUTAIRES', maxCount: 1 },
+    { name: 'attachment_RIB', maxCount: 1 },
+    { name: 'attachment_LETTRES_SOUTIEN', maxCount: 1 },
+    { name: 'attachment_PREUVE_NON_FAILLITE', maxCount: 1 },
+    { name: 'attachment_CARTOGRAPHIE', maxCount: 1 },
+    { name: 'attachment_FICHE_CIRCUIT', maxCount: 1 },
+    { name: 'attachment_BUDGET_DETAILLE', maxCount: 1 },
+    { name: 'attachment_CHRONOGRAMME', maxCount: 1 }
+  ]),
+  async (req, res: Response, next: NextFunction) => {
+    try {
+      const authReq = req as AuthRequest;
+      if (!authReq.user) throw new Error('Authentification requise.');
+
+      const idUtilisateur = authReq.user.userId;
+      const files = (authReq.files as unknown) as { [fieldname: string]: Express.Multer.File[] };
+
+      // Parser les données JSON du formulaire
+      let projectData;
       try {
-        const authReq = req as AuthRequest;
-        if (!authReq.user) throw new Error('Authentification requise.');
-
-        const idUtilisateur = authReq.user.userId;
-        const files = authReq.files as { [fieldname: string]: Express.Multer.File[] };
-
-        // Parser les données JSON du formulaire
-        let projectData;
-        try {
-          projectData = JSON.parse(authReq.body.projectData);
-        } catch (error) {
-          return res.status(400).json({
-            message: 'Données du projet invalides (JSON malformé).'
-          });
-        }
-
-        // Parser l'index des documents (métadonnées)
-        let attachmentsIndex;
-        try {
-          attachmentsIndex = JSON.parse(authReq.body.attachmentsIndex || '[]');
-        } catch (error) {
-          attachmentsIndex = [];
-        }
-
-        console.log('📥 Réception soumission projet :');
-        console.log('  - Utilisateur:', idUtilisateur);
-        console.log('  - Titre:', projectData.title);
-        console.log('  - Fichiers uploadés:', Object.keys(files).length);
-
-        // Appeler le service pour créer la demande
-        const demande = await demandeSubventionService.soumettre(
-            projectData,
-            files,
-            attachmentsIndex,
-            idUtilisateur
-        );
-
-        // Préparer les données pour l'envoi d'emails
-        try {
-          const emailData: DemandeData = {
-            titre: projectData.title || 'Projet sans titre',
-            organisation: {
-              nom: demande.organisation?.nom || 'Organisation inconnue',
-              email: demande.organisation?.email || null,
-              telephone: demande.organisation?.telephone || null
-            },
-            soumisPar: {
-              nom: demande.utilisateur?.nom || null,
-              prenom: demande.utilisateur?.prenom || null,
-              email: demande.utilisateur?.email || 'email@inconnu.com'
-            },
-            domaines: projectData.domains || [],
-            localisation: projectData.location || 'Non spécifié',
-            groupeCible: projectData.targetGroup || 'Non spécifié',
-            contextJustification: projectData.contextJustification || '',
-            objectifs: projectData.objectives || '',
-            expectedResults: projectData.expectedResults || '',
-            dureeMois: projectData.durationMonths || 12,
-            dateDebutActivites: new Date(projectData.startDate || Date.now()),
-            dateFinActivites: new Date(projectData.endDate || Date.now()),
-            activitiesSummary: projectData.activitiesSummary || '',
-            activites: projectData.activities || [],
-            risques: projectData.risks || [],
-            usdRate: projectData.usdRate || 600,
-            montantTotal: projectData.totalBudget || 0,
-            indirectOverheads: projectData.indirectOverheads || 0,
-            projectStage: projectData.projectStage || 'CONCEPTION',
-            hasFunding: projectData.hasFunding || false,
-            fundingDetails: projectData.fundingDetails || undefined,
-            sustainability: projectData.sustainability || '',
-            replicability: projectData.replicability || undefined,
-            collaborateurs: projectData.collaborators || []
-          };
-
-          // Envoyer les emails de confirmation et notification
-          console.log('📧 Envoi des emails de confirmation...');
-          await sendProjectSubmissionEmails(emailData);
-          console.log('✅ Emails envoyés avec succès');
-        } catch (emailError: any) {
-          // Log l'erreur mais ne bloque pas la soumission
-          console.error('⚠️ Erreur lors de l\'envoi des emails (non bloquant):', emailError.message);
-        }
-
-        res.status(201).json({
-          message: 'Projet soumis avec succès.',
-          data: demande
+        projectData = JSON.parse(authReq.body.projectData);
+      } catch (error) {
+        return res.status(400).json({
+          message: 'Données du projet invalides (JSON malformé).'
         });
-      } catch (error: any) {
-        console.error('❌ Erreur soumission projet:', error);
-        next(error);
       }
+
+      // Parser l'index des documents (métadonnées)
+      let attachmentsIndex;
+      try {
+        attachmentsIndex = JSON.parse(authReq.body.attachmentsIndex || '[]');
+      } catch (error) {
+        attachmentsIndex = [];
+      }
+
+      console.log('📥 Réception soumission projet :');
+      console.log('  - Utilisateur:', idUtilisateur);
+      console.log('  - Titre:', projectData.title);
+      console.log('  - Fichiers uploadés:', Object.keys(files).length);
+
+      // Appeler le service pour créer la demande
+      const demande = await demandeSubventionService.soumettre(projectData, files, attachmentsIndex, idUtilisateur);
+
+      // Préparer les données pour l'envoi d'emails
+      try {
+        const emailData: DemandeData = {
+          titre: projectData.title || 'Projet sans titre',
+          organisation: {
+            nom: demande?.organisation?.nom || 'Organisation inconnue',
+            email: demande?.organisation?.email || null,
+            telephone: demande?.organisation?.telephone || null
+          },
+          soumisPar: {
+            nom: demande?.soumisPar?.nom || null,
+            prenom: demande?.soumisPar?.prenom || null,
+            email: demande?.soumisPar?.email || 'email@inconnu.com'
+          },
+          domaines: projectData.domains || [],
+          localisation: projectData.location || 'Non spécifié',
+          montantTotal: projectData.totalBudget || 0,
+          dureeMois: projectData.durationMonths || 12,
+          activites: projectData.activities || [],
+          risques: projectData.risks || []
+        };
+
+        // Envoyer les emails de confirmation et notification
+        console.log('📧 Envoi des emails de confirmation...');
+        await sendProjectSubmissionEmails(emailData);
+        console.log('✅ Emails envoyés avec succès');
+      } catch (emailError: any) {
+        // Log l'erreur mais ne bloque pas la soumission
+        console.error("⚠️ Erreur lors de l'envoi des emails (non bloquant):", emailError.message);
+      }
+
+      res.status(201).json({
+        message: 'Projet soumis avec succès.',
+        data: demande
+      });
+    } catch (error: any) {
+      console.error('❌ Erreur soumission projet:', error);
+      next(error);
     }
+  }
 );
 
 // ========================================
