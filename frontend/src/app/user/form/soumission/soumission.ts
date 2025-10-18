@@ -26,7 +26,7 @@
 // ============================================================================
 
 import { CommonModule } from '@angular/common';
-import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { HttpClient } from '@angular/common/http';
 import { Component, computed, inject, signal } from '@angular/core';
 
 import {
@@ -83,6 +83,58 @@ function minArrayLen(min = 1) {
   };
 }
 
+// Validateur de domaines autorisés (sera configuré dynamiquement selon le type de subvention)
+function domainsValidator(allowedDomains: () => string[]) {
+  return (c: AbstractControl): ValidationErrors | null => {
+    const val = (c.value ?? []) as string[];
+    if (!Array.isArray(val) || val.length === 0) return { domainsRequired: true };
+    const allowed = new Set(allowedDomains());
+    const allOk = val.every((d) => allowed.has(d));
+    return allOk ? null : { domainNotAllowed: true };
+  };
+}
+
+// Validateur pour les dates de projet (durée max selon type de subvention)
+function projectDatesValidator(getMaxMonths: () => number) {
+  return (group: AbstractControl): ValidationErrors | null => {
+    const g = group as FormGroup;
+    const s = g.get('startDate')?.value;
+    const e = g.get('endDate')?.value;
+    if (!s || !e) return null;
+
+    const start = new Date(s);
+    const end = new Date(e);
+    if (end < start) return { dateRange: true };
+
+    // Calcul de la durée en mois
+    const monthsDiff =
+      (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth()) + 1;
+    const maxMonths = getMaxMonths();
+
+    return monthsDiff > maxMonths ? { maxMonths: { actual: monthsDiff, max: maxMonths } } : null;
+  };
+}
+
+// Validateur pour les dates d'activité (doivent être dans la fenêtre du projet)
+function activityDatesValidator(getProjectDates: () => { start: Date | null; end: Date | null }) {
+  return (group: AbstractControl): ValidationErrors | null => {
+    const g = group as FormGroup;
+    const s = g.get('start')?.value;
+    const e = g.get('end')?.value;
+    if (!s || !e) return null;
+
+    const start = new Date(s);
+    const end = new Date(e);
+    if (end < start) return { dateRange: true };
+
+    const { start: projStart, end: projEnd } = getProjectDates();
+    if (projStart && start < projStart) return { outOfProjectWindow: 'before' };
+    if (projEnd && end > projEnd) return { outOfProjectWindow: 'after' };
+
+    return null;
+  };
+}
+
 // Validateur pour une ligne de budget : label, cfa>0, fpbg+cofin = 100
 function budgetLineValidator(group: AbstractControl): ValidationErrors | null {
   const g = group as FormGroup;
@@ -130,25 +182,50 @@ export class SubmissionWizard {
   userAccount: any = null;
 
   // 🎯 Configuration des types de subvention
-  subventionConfig: Record<string, { libelle: string; montantMin: string; montantMax: string; dureeMax: string }> = {
-    'PETITE': {
-      libelle: 'Petite subvention',
-      montantMin: '5.000.000',
-      montantMax: '50.000.000',
-      dureeMax: '12 mois'
-    },
-    'MOYENNE': {
-      libelle: 'Moyenne subvention',
-      montantMin: '51.000.000',
-      montantMax: '200.000.000',
-      dureeMax: '24 mois'
+  subventionConfig: Record<
+    string,
+    {
+      libelle: string;
+      montantMin: number;
+      montantMax: number;
+      dureeMax: number;
+      domaines: string[];
     }
+  > = {
+    PETITE: {
+      libelle: 'Petite subvention',
+      montantMin: 5_000_000,
+      montantMax: 50_000_000,
+      dureeMax: 12,
+      domaines: [
+        'Pêche communautaire durable',
+        'Réduction de la pollution plastique (milieux marins & littoraux)',
+        'Sensibilisation environnementale (conservation marins & littoraux)',
+        'Renforcement des capacités / accompagnement des acteurs locaux',
+        'Caractérisation des écosystèmes littoraux et marins (recherche, matériel scientifique)',
+      ],
+    },
+    MOYENNE: {
+      libelle: 'Moyenne subvention',
+      montantMin: 51_000_000,
+      montantMax: 200_000_000,
+      dureeMax: 24,
+      domaines: [
+        'Implication des communautés locales dans la gestion durable du milieu marin',
+        'Valorisation des savoirs locaux & amélioration de la chaîne de valeur halieutique',
+        'Cartographie & restauration des habitats littoraux pollués/dégradés (mangroves, etc.)',
+        'Amélioration des connaissances du milieu marin (habitats, stocks, dynamiques…)',
+        'Recherche & vulgarisation des interactions Homme/Faune aquatique',
+        "Projets en faveur de l'économie bleue (filières durables, tourisme, déchets, etc)",
+      ],
+    },
   };
 
   // Signals pour les informations de type de subvention
   typeSubvention = signal<string>('Petite subvention');
+  typeSubventionCode = signal<'PETITE' | 'MOYENNE'>('PETITE');
   montantRange = signal<string>('5.000.000 – 50.000.000 FCFA');
-  dureeMax = signal<string>('12 mois');
+  dureeMax = signal<number>(12); // en mois
 
   // État des documents (pour l'interface de sélection/upload)
   documentsState: Map<
@@ -336,16 +413,11 @@ export class SubmissionWizard {
   /* ==============================
      Données auxiliaires (UI)
      ============================== */
-  domaines = [
-    'Conservation marine',
-    'Restauration des écosystèmes',
-    'Pêche durable',
-    'Réduction pollution plastique',
-    'Sensibilisation environnementale',
-    'Renforcement capacités',
-    'Recherche scientifique',
-    'Économie bleue',
-  ];
+  // Domaines autorisés selon le type de subvention
+  get domaines(): string[] {
+    const code = this.typeSubventionCode();
+    return this.subventionConfig[code]?.domaines || [];
+  }
 
   /* ==============================
      Formulaires par étape
@@ -354,7 +426,9 @@ export class SubmissionWizard {
   // ---- Étape 1 : Proposition de projet ----
   stepProp = this.fb.group({
     title: ['', [Validators.required, Validators.maxLength(120)]],
-    domains: this.fb.control<string[]>([], { validators: [minArrayLen(1)] }), // au moins 1 domaine
+    domains: this.fb.control<string[]>([], {
+      validators: [domainsValidator(() => this.domaines)],
+    }), // domaines autorisés selon le type de subvention
     location: ['', [Validators.required, wordLimit(200)]],
     targetGroup: ['', [Validators.required, wordLimit(200)]],
     contextJustification: ['', [Validators.required, wordLimit(500)]],
@@ -373,18 +447,28 @@ export class SubmissionWizard {
   }
 
   // ---- Étape 2 : Objectifs & résultats ----
-  // ---- Étape 2 : Objectifs & résultats ----
   obj = this.fb.group({
     objectives: ['', [Validators.required, wordLimit(200)]],
     expectedResults: ['', [Validators.required, wordLimit(100)]],
-    durationMonths: [12, [Validators.required, Validators.min(1), Validators.max(12)]],
+    durationMonths: [
+      12,
+      [
+        Validators.required,
+        Validators.min(1),
+        // Validateur dynamique qui vérifie selon le type de subvention
+        (control: AbstractControl): ValidationErrors | null => {
+          const value = Number(control.value);
+          const maxDuration = this.getMaxDuration();
+          return value > maxDuration ? { max: { max: maxDuration, actual: value } } : null;
+        },
+      ],
+    ],
   });
 
   // Retourne la durée maximale selon le type de subvention
   getMaxDuration(): number {
-    const typeSubv = this.typeSubvention();
-    // Si "Moyenne subvention" -> 24 mois, sinon 12 mois
-    return typeSubv.toLowerCase().includes('moyenne') ? 24 : 12;
+    const code = this.typeSubventionCode();
+    return this.subventionConfig[code]?.dureeMax || 12;
   }
 
   // Force la durée entre 1 et la durée max selon le type de subvention
@@ -396,44 +480,111 @@ export class SubmissionWizard {
     if (clamped !== v) ctrl.setValue(clamped);
   }
 
+  // Met à jour les validateurs de durée quand le type de subvention change
+  updateDurationValidators(): void {
+    const ctrl = this.obj.get('durationMonths');
+    if (ctrl) {
+      // Force la revalidation avec le nouveau maximum
+      ctrl.updateValueAndValidity({ emitEvent: false });
+
+      // Clampe la valeur si elle dépasse le nouveau max
+      const currentValue = Number(ctrl.value || 0);
+      const maxDuration = this.getMaxDuration();
+      if (currentValue > maxDuration) {
+        ctrl.setValue(maxDuration, { emitEvent: false });
+      }
+    }
+  }
+
+  /**
+   * Change le type de subvention et met à jour toutes les validations
+   */
+  setTypeSubvention(type: 'PETITE' | 'MOYENNE'): void {
+    this.typeSubventionCode.set(type);
+
+    // Mise à jour du libellé et des infos affichées
+    const config = this.subventionConfig[type];
+    this.typeSubvention.set(config.libelle);
+    this.montantRange.set(
+      `${config.montantMin.toLocaleString('fr-FR')} – ${config.montantMax.toLocaleString('fr-FR')} FCFA`
+    );
+    this.dureeMax.set(config.dureeMax);
+
+    // Revalider les domaines
+    this.stepProp.get('domains')?.updateValueAndValidity({ emitEvent: false });
+
+    // Revalider les dates du projet
+    this.activitiesHeader.updateValueAndValidity({ emitEvent: false });
+
+    // Revalider toutes les activités
+    this.activities.controls.forEach((activity) => {
+      activity.updateValueAndValidity({ emitEvent: false });
+    });
+
+    // Mettre à jour la validation de durée
+    this.updateDurationValidators();
+
+    // Recalculer les contraintes budgétaires
+    this.recomputeIndirectCapGlobal();
+  }
+
   // ---- Étape 3 : Activités & calendrier ----
-  activitiesHeader = this.fb.group({
-    startDate: this.fb.control<string>(this.today(), {
-      nonNullable: true,
-      validators: [Validators.required],
-    }),
-    endDate: this.fb.control<string>(this.today(), {
-      nonNullable: true,
-      validators: [Validators.required],
-    }),
-    summary: this.fb.control<string>('', {
-      nonNullable: true,
-      validators: [Validators.required, wordLimit(200)],
-    }),
-  });
+  activitiesHeader = this.fb.group(
+    {
+      startDate: this.fb.control<string>(this.today(), {
+        nonNullable: true,
+        validators: [Validators.required],
+      }),
+      endDate: this.fb.control<string>(this.today(), {
+        nonNullable: true,
+        validators: [Validators.required],
+      }),
+      summary: this.fb.control<string>('', {
+        nonNullable: true,
+        validators: [Validators.required, wordLimit(200)],
+      }),
+    },
+    {
+      validators: [projectDatesValidator(() => this.getMaxDuration())],
+    }
+  );
 
   private makeActivity(
     data?: Partial<{ title: string; start: string; end: string; summary: string }>
   ): FormGroup {
-    return this.fb.group({
-      title: this.fb.control<string>(data?.title ?? '', {
-        nonNullable: true,
-        validators: [Validators.required, Validators.maxLength(160)],
-      }),
-      start: this.fb.control<string>(data?.start ?? this.today(), {
-        nonNullable: true,
-        validators: [Validators.required],
-      }),
-      end: this.fb.control<string>(data?.end ?? this.today(), {
-        nonNullable: true,
-        validators: [Validators.required],
-      }),
-      summary: this.fb.control<string>(data?.summary ?? '', {
-        nonNullable: true,
-        validators: [Validators.required, wordLimit(50)],
-      }),
-      subs: this.fb.array<FormGroup>([]),
-    });
+    return this.fb.group(
+      {
+        title: this.fb.control<string>(data?.title ?? '', {
+          nonNullable: true,
+          validators: [Validators.required, Validators.maxLength(160)],
+        }),
+        start: this.fb.control<string>(data?.start ?? this.today(), {
+          nonNullable: true,
+          validators: [Validators.required],
+        }),
+        end: this.fb.control<string>(data?.end ?? this.today(), {
+          nonNullable: true,
+          validators: [Validators.required],
+        }),
+        summary: this.fb.control<string>(data?.summary ?? '', {
+          nonNullable: true,
+          validators: [Validators.required, wordLimit(50)],
+        }),
+        subs: this.fb.array<FormGroup>([]),
+      },
+      {
+        validators: [
+          activityDatesValidator(() => {
+            const start = this.activitiesHeader.get('startDate')?.value;
+            const end = this.activitiesHeader.get('endDate')?.value;
+            return {
+              start: start ? new Date(start) : null,
+              end: end ? new Date(end) : null,
+            };
+          }),
+        ],
+      }
+    );
   }
 
   // Tableau des activités
@@ -747,16 +898,10 @@ export class SubmissionWizard {
   /* ==============================
      Calculs & helpers budget global
      ============================== */
+  // Ancienne méthode totalBudget conservée pour compatibilité (utilise le FormGroup budget)
   totalBudget = computed(() => {
     const b = this.budget.getRawValue();
     return Number(b.terrain || 0) + Number(b.invest || 0) + Number(b.overhead || 0);
-  });
-
-  overheadTooHigh = computed(() => {
-    const total = this.totalBudget();
-    if (!total) return false;
-    const fct = Number(this.budget.get('overhead')?.value || 0);
-    return fct > total * 0.1;
   });
 
   allowedAccept = ALLOWED_MIME.join(',');
@@ -780,6 +925,60 @@ export class SubmissionWizard {
     }
     return total > 0 && indirect / total > 0.1;
   }
+
+  /**
+   * Compte le nombre d'activités qui ont au moins une ligne budgétaire
+   */
+  public activitiesWithLinesCount(): number {
+    const acts = (this.activities.controls as FormGroup[]) || [];
+    let count = 0;
+    for (const a of acts) {
+      const lines = (a.get(['budget', 'lines']) as FormArray<FormGroup>)?.controls || [];
+      if (lines.length > 0) count++;
+    }
+    return count;
+  }
+
+  /**
+   * Retourne la ventilation des frais indirects par activité
+   * Les frais indirects sont répartis proportionnellement aux coûts directs
+   */
+  public indirectBreakdown(): Array<{
+    title: string;
+    direct: number;
+    share: number;
+    indirect: number;
+  }> {
+    const totalDir = this.sumDirect();
+    if (totalDir === 0) return [];
+
+    const totalInd = this.totalIndirect();
+    const acts = (this.activities.controls as FormGroup[]) || [];
+    const result: Array<{ title: string; direct: number; share: number; indirect: number }> = [];
+
+    for (const a of acts) {
+      const lines = (a.get(['budget', 'lines']) as FormArray<FormGroup>)?.controls || [];
+      if (lines.length === 0) continue;
+
+      let actDirect = 0;
+      for (const l of lines) {
+        actDirect += this.asNumber(l.get('cfa')?.value);
+      }
+
+      const share = actDirect / totalDir;
+      const actIndirect = totalInd * share;
+
+      result.push({
+        title: a.get('title')?.value || 'Activité sans titre',
+        direct: actDirect,
+        share: share,
+        indirect: actIndirect,
+      });
+    }
+
+    return result;
+  }
+
   public showSubtotalOnBadge = false;
   public formatK(n: number): string {
     n = Number(n || 0);
@@ -798,25 +997,62 @@ export class SubmissionWizard {
     }
     return total;
   }
+
   public totalIndirect(): number {
     return this.asNumber(this.form.get('indirectOverheads')?.value);
   }
+
   public totalProject(): number {
     return this.sumDirect() + this.totalIndirect();
   }
+
   public indirectShare(): number {
     const total = this.totalProject();
     return total > 0 ? this.totalIndirect() / total : 0;
   }
 
-  // Erreur globale si dépassement 10 %
+  /**
+   * Plafond officiel des frais indirects: 10% du budget total
+   * Formule: I_max = floor(D / 9)
+   * Car si I = D/9, alors I / (D + I) = D/9 / (D + D/9) = 1/10 = 10%
+   */
+  public allowedIndirectMax(): number {
+    const direct = this.sumDirect();
+    return direct > 0 ? Math.floor(direct / 9) : 0;
+  }
+
+  public overheadTooHigh(): boolean {
+    return this.totalIndirect() > this.allowedIndirectMax();
+  }
+
+  /**
+   * Retourne les bornes min/max du budget selon le type de subvention
+   */
+  public budgetMin(): number {
+    const code = this.typeSubventionCode();
+    return this.subventionConfig[code]?.montantMin || 5_000_000;
+  }
+
+  public budgetMax(): number {
+    const code = this.typeSubventionCode();
+    return this.subventionConfig[code]?.montantMax || 50_000_000;
+  }
+
+  private totalOutOfRange(): boolean {
+    const total = this.totalProject();
+    return total < this.budgetMin() || total > this.budgetMax();
+  }
+
+  // Erreur globale si dépassement 10% ou hors tranche
   public recomputeIndirectCapGlobal(): void {
-    const share = this.indirectShare();
-    this.indirectCapError = share > 0.1;
+    this.indirectCapError = this.overheadTooHigh();
+    const rangeBudgetError = this.totalOutOfRange();
 
     const errs = { ...(this.form.errors || {}) };
     if (this.indirectCapError) errs['indirectCap'] = true;
     else delete errs['indirectCap'];
+    if (rangeBudgetError) errs['budgetRange'] = true;
+    else delete errs['budgetRange'];
     this.form.setErrors(Object.keys(errs).length ? errs : null);
   }
 
@@ -938,19 +1174,23 @@ export class SubmissionWizard {
         // Charger le type de subvention depuis l'organisation
         if (org?.typeSubvention) {
           const typeSubv = org.typeSubvention;
-          const code = typeSubv.code || 'PETITE';
+          const code = (typeSubv.code || 'PETITE') as 'PETITE' | 'MOYENNE';
           const config = this.subventionConfig[code];
 
           if (config) {
+            // ✅ Mettre à jour tous les signals
+            this.typeSubventionCode.set(code); // 🔥 CRUCIAL : définit le code pour getMaxDuration()
             this.typeSubvention.set(config.libelle);
-            this.montantRange.set(`${config.montantMin} – ${config.montantMax} FCFA`);
+            this.montantRange.set(
+              `${config.montantMin.toLocaleString('fr-FR')} – ${config.montantMax.toLocaleString('fr-FR')} FCFA`
+            );
             this.dureeMax.set(config.dureeMax);
-            console.log('✅ Type de subvention chargé:', config.libelle, '(code:', code, ')');
+            console.log('✅ Type de subvention chargé:', config.libelle, '(code:', code, ') - Durée max:', config.dureeMax, 'mois');
           } else {
             console.warn('⚠️ Aucune configuration trouvée pour le code:', code);
           }
         } else {
-          console.warn('⚠️ Aucun typeSubvention trouvé dans l\'organisation');
+          console.warn("⚠️ Aucun typeSubvention trouvé dans l'organisation");
         }
       }
 
@@ -1200,14 +1440,6 @@ export class SubmissionWizard {
     // Charger les informations utilisateur
     this.loadUserInfo();
 
-    // Mettre à jour la validation de durée selon le type de subvention
-    const maxDuration = this.getMaxDuration();
-    const durationCtrl = this.obj.get('durationMonths');
-    if (durationCtrl) {
-      durationCtrl.setValidators([Validators.required, Validators.min(1), Validators.max(maxDuration)]);
-      durationCtrl.updateValueAndValidity({ emitEvent: false });
-    }
-
     // ---- Paramètre : taux USD (lecture seule côté UI) ----
     const DEFAULT_USD_RATE = 600;
     if (!this.form.get('usdRate')) {
@@ -1278,6 +1510,9 @@ export class SubmissionWizard {
         /* ignore JSON error */
       }
     }
+
+    // Note: La surveillance des changements de type de subvention est gérée via effect()
+    // dans le template ou manuellement quand le type change
 
     // Autosave unique (LS + méta + event)
     this.form.valueChanges.pipe(debounceTime(400)).subscribe((v) => {
@@ -1535,14 +1770,14 @@ export class SubmissionWizard {
       collaborateurs: [],
 
       // Pièces jointes - uniquement les noms des fichiers
-      attachments: this.getUploadedDocuments().map(doc => ({
+      attachments: this.getUploadedDocuments().map((doc) => ({
         key: doc.key,
         label: doc.label,
         fileName: doc.file?.name || '',
         fileSize: doc.file?.size || 0,
         fileType: doc.file?.type || '',
-        required: doc.required
-      }))
+        required: doc.required,
+      })),
     };
 
     // Logs pour debug

@@ -1,5 +1,27 @@
 <!-- soumission.html (organisé) -->
 <div class="min-h-screen p-2 sm:p-3 md:p-4 lg:p-6 bg-slate-50">
+  <!-- Overlay de chargement -->
+  @if (isSubmitting()) {
+    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+      <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-sm w-full mx-4 text-center">
+        <!-- Spinner animé -->
+        <div class="relative w-20 h-20 mx-auto mb-6">
+          <div class="absolute inset-0 border-4 border-emerald-200 rounded-full"></div>
+          <div class="absolute inset-0 border-4 border-transparent border-t-emerald-600 rounded-full animate-spin"></div>
+          <div class="absolute inset-2 border-4 border-transparent border-t-emerald-400 rounded-full animate-spin" style="animation-duration: 0.8s; animation-direction: reverse;"></div>
+        </div>
+
+        <!-- Message -->
+        <h3 class="text-xl font-bold text-slate-800 mb-2">Soumission en cours...</h3>
+        <p class="text-sm text-slate-600">Veuillez patienter pendant l'envoi de votre projet</p>
+
+        <!-- Barre de progression animée -->
+        <div class="mt-6 w-full h-1.5 bg-slate-200 rounded-full overflow-hidden">
+          <div class="h-full bg-gradient-to-r from-emerald-500 to-emerald-600 rounded-full animate-pulse" style="width: 100%; animation-duration: 1.5s;"></div>
+        </div>
+      </div>
+    </div>
+  }
   <!-- HEADER -->
   <header class="bg-white border-b border-slate-200">
     <div
@@ -300,19 +322,20 @@
             <input
               type="number"
               min="1"
-              [max]="getMaxDuration()"
+              [max]="dureeMax()"
               class="w-full px-3 py-2 border rounded-md"
               formControlName="durationMonths"
               (change)="clampDuration()"
             />
             <div class="mt-1 text-xs text-slate-500">
-              Valeur autorisée : 1 à {{ getMaxDuration() }} mois.
+              Valeur autorisée : 1 à {{ dureeMax() }} mois.
             </div>
             <div
               class="mt-1 text-xs text-rose-600"
               *ngIf="obj.get('durationMonths')?.errors?.['max']"
             >
-              La durée ne peut pas dépasser <b>{{ getMaxDuration() }} mois</b>.
+              La durée ne peut pas dépasser <b>{{ dureeMax() }}</b
+              >.
             </div>
             <div
               class="mt-1 text-xs text-rose-600"
@@ -662,7 +685,7 @@
         <!-- =================================
              ÉTAPE 5 : ESTIMATION DU BUDGET
              ================================= -->
-        <div *ngIf="current() === 4" class="space-y-5 w-full max-w-full" style="overflow-x: hidden">
+        <div *ngIf="current() === 4" class="w-full max-w-full space-y-5" style="overflow-x: hidden">
           <h2 class="text-lg sm:text-xl md:text-[20px] leading-6 font-semibold text-slate-900 mb-4">
             Estimation du budget (par activité)
           </h2>
@@ -733,7 +756,7 @@
           <!-- Tableau Budget de l'activité sélectionnée -->
           <ng-container *ngIf="selectedBudgetActivity !== null">
             <div
-              class="p-2 sm:p-3 md:p-4 mt-4 bg-white border rounded-md shadow-sm border-slate-200 w-full"
+              class="w-full p-2 mt-4 bg-white border rounded-md shadow-sm sm:p-3 md:p-4 border-slate-200"
             >
               <div class="flex items-center justify-between mb-3">
                 <h4 class="text-sm font-semibold text-slate-800">
@@ -758,7 +781,7 @@
                 <div formGroupName="budget" class="w-full">
                   <div
                     formArrayName="lines"
-                    class="w-full overflow-x-auto overflow-y-hidden border rounded-lg max-w-full budget-scroll"
+                    class="w-full max-w-full overflow-x-auto overflow-y-hidden border rounded-lg budget-scroll"
                     style="max-width: 100%"
                   >
                     <table class="w-full text-sm" style="min-width: 700px">
@@ -919,19 +942,21 @@
                       <tfoot>
                         <tr class="font-semibold bg-emerald-50">
                           <td class="py-2 pr-2">Total activité</td>
-                          <td class="py-2 pr-2 text-right">
+                          <td></td>
+                          <td class="py-2 pr-2">
                             {{ totalActivityCfa(selectedBudgetActivity!) | number : '1.0-0' }} FCFA
                           </td>
-                          <td class="py-2 pr-2 text-right">
+                          <td class="py-2 pr-2">
                             {{ totalActivityUsd(selectedBudgetActivity!) | number : '1.0-0' }} USD
                           </td>
-                          <td class="py-2 pr-2"></td>
-                          <td class="py-2 pr-2 text-right">
+                          <td></td>
+                          <td class="py-2 pr-2">
                             {{ totalActivityFpbg(selectedBudgetActivity!) | number : '1.0-0' }} FCFA
                           </td>
-                          <td class="py-2 pr-2"></td>
-                          <td class="py-2 pr-2 text-right">
-                            {{ totalActivityCofin(selectedBudgetActivity!) | number : '1.0-0' }} FCFA
+                          <td></td>
+                          <td class="py-2 pr-2">
+                            {{ totalActivityCofin(selectedBudgetActivity!) | number : '1.0-0' }}
+                            FCFA
                           </td>
                           <td></td>
                         </tr>
@@ -940,18 +965,20 @@
                   </div>
 
                   <!-- Alerte : règle 10% indirects (vue projet) -->
+                  <!-- Alerte : règle 10% indirects (vue projet) -->
                   <div
                     *ngIf="indirectCapError"
                     class="px-3 py-2 mt-3 text-sm border rounded-md border-amber-200 bg-amber-50 text-amber-800"
                   >
-                    Les frais de fonctionnement <strong>indirects</strong> dépassent 10% du total du
-                    projet.
+                    Les frais de fonctionnement <strong>indirects</strong> dépassent
+                    <strong>10&nbsp;% des coûts directs</strong>.
                   </div>
                 </div>
               </div>
             </div>
           </ng-container>
 
+          <!-- Frais indirects (global) -->
           <!-- Frais indirects (global) -->
           <div
             class="p-4 mt-5 bg-white border rounded-md shadow-sm border-slate-200"
@@ -961,8 +988,13 @@
               <div>
                 <h4 class="text-sm font-semibold text-slate-800">Frais indirects (overheads)</h4>
                 <p class="text-xs text-slate-500">
-                  Plafond : au plus <strong>10 %</strong> du total du projet.
+                  Plafond : au plus <strong>10 %</strong> du <strong>budget total</strong> (toutes
+                  activités).
                 </p>
+                <div class="mt-1 text-[12px] text-slate-600">
+                  Coûts directs : <b>{{ sumDirect() | number : '1.0-0' }} FCFA</b> · Plafond (10 %)
+                  : <b>{{ allowedIndirectMax() | number : '1.0-0' }} FCFA</b>
+                </div>
               </div>
               <div class="text-right">
                 <div class="text-sm">
@@ -980,18 +1012,23 @@
               </div>
             </div>
 
-            <div class="grid gap-2 sm:gap-3 mt-3 grid-cols-1 sm:grid-cols-2">
+            <div class="grid grid-cols-1 gap-2 mt-3 sm:gap-3 sm:grid-cols-2">
               <div>
-                <label class="block mb-1 text-sm font-medium text-slate-700"
-                  >Montant des frais indirects (FCFA)</label
-                >
+                <label class="block mb-1 text-sm font-medium text-slate-700">
+                  Montant des frais indirects (FCFA)
+                </label>
                 <input
                   type="number"
                   min="0"
+                  [max]="allowedIndirectMax()"
                   formControlName="indirectOverheads"
                   class="w-full px-3 py-2 text-sm bg-white border rounded-md shadow-sm border-slate-300 focus:border-green-500 focus:ring-2 focus:ring-green-200"
                   placeholder="0"
                 />
+                <div class="mt-1 text-[12px] text-slate-500">
+                  Plafond autorisé : <b>{{ allowedIndirectMax() | number : '1.0-0' }} FCFA</b>
+                </div>
+
                 <div
                   *ngIf="indirectCapError"
                   class="mt-2 inline-flex items-center gap-2 rounded-md border border-amber-200 bg-amber-50 px-2 py-1 text-[12px] text-amber-800"
@@ -1012,7 +1049,7 @@
                     <line x1="12" y1="9" x2="12" y2="13"></line>
                     <line x1="12" y1="17" x2="12.01" y2="17"></line>
                   </svg>
-                  Les frais indirects dépassent 10 % du total du projet.
+                  Les frais indirects dépassent <b>10 % du budget total</b>.
                 </div>
               </div>
             </div>
@@ -1077,14 +1114,14 @@
 
               <!-- Dialog -->
               <div
-                class="relative w-full overflow-hidden bg-white shadow-2xl max-w-sm sm:max-w-2xl md:max-w-3xl rounded-2xl ring-1 ring-black/5"
+                class="relative w-full max-w-sm overflow-hidden bg-white shadow-2xl sm:max-w-2xl md:max-w-3xl rounded-2xl ring-1 ring-black/5"
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby="honor-title"
               >
                 <!-- Header (sticky) -->
                 <div
-                  class="sticky top-0 z-10 flex items-center justify-between px-4 sm:px-6 py-4 border-b bg-white/95 backdrop-blur"
+                  class="sticky top-0 z-10 flex items-center justify-between px-4 py-4 border-b sm:px-6 bg-white/95 backdrop-blur"
                 >
                   <h3 id="honor-title" class="text-lg font-semibold text-slate-900">
                     Engagement sur l’honneur
@@ -1211,7 +1248,7 @@
 
                 <!-- Footer (sticky) -->
                 <div
-                  class="sticky bottom-0 z-10 flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-2 sm:gap-3 px-4 sm:px-6 py-4 border-t bg-slate-50/95 backdrop-blur"
+                  class="sticky bottom-0 z-10 flex flex-col items-stretch justify-end gap-2 px-4 py-4 border-t sm:flex-row sm:items-center sm:gap-3 sm:px-6 bg-slate-50/95 backdrop-blur"
                 >
                   <button
                     type="button"
@@ -1556,7 +1593,7 @@
           <!-- Étape 2 : Objectifs -->
           <div class="p-4 border rounded-lg">
             <h3 class="mb-3 font-semibold text-slate-900">2) Objectifs & résultats</h3>
-            <div class="grid gap-2 sm:gap-3 text-sm md:grid-cols-2">
+            <div class="grid gap-2 text-sm sm:gap-3 md:grid-cols-2">
               <div class="md:col-span-2">
                 <div class="text-slate-500">Objectifs</div>
                 <div class="font-medium whitespace-pre-wrap">
@@ -1580,7 +1617,7 @@
           <div class="p-4 border rounded-lg">
             <h3 class="mb-3 font-semibold text-slate-900">3) Activités & calendrier</h3>
 
-            <div class="grid gap-2 sm:gap-3 mb-3 text-sm md:grid-cols-2">
+            <div class="grid gap-2 mb-3 text-sm sm:gap-3 md:grid-cols-2">
               <div>
                 <div class="text-slate-500">Date de début du projet</div>
                 <div class="font-medium">{{ activitiesHeader.get('startDate')?.value || '—' }}</div>
@@ -1697,6 +1734,121 @@
                       </tfoot>
                     </table>
                   </div>
+                  <!-- Synthèse Budget global -->
+                  <div class="p-4 mt-5 border rounded-lg">
+                    <h4 class="mb-3 font-semibold text-slate-900">Synthèse budget global</h4>
+
+                    <div class="grid gap-3 text-sm md:grid-cols-3">
+                      <div class="p-3 border rounded-md">
+                        <div class="text-slate-500">Coûts directs (toutes activités)</div>
+                        <div class="text-lg font-semibold">
+                          {{ sumDirect() | number : '1.0-0' }} FCFA
+                        </div>
+                        <div class="text-xs text-slate-500" *ngIf="activitiesWithLinesCount() > 1">
+                          {{ activitiesWithLinesCount() }} activités budgétées
+                        </div>
+                      </div>
+
+                      <div class="p-3 border rounded-md">
+                        <div class="text-slate-500">Frais indirects</div>
+                        <div
+                          class="text-lg font-semibold"
+                          [class.text-amber-700]="overheadTooHigh()"
+                          [class.text-emerald-700]="!overheadTooHigh()"
+                        >
+                          {{ totalIndirect() | number : '1.0-0' }} FCFA
+                          <span class="text-xs text-slate-500">
+                            ({{ indirectShare() | percent : '1.0-1' }})</span
+                          >
+                        </div>
+                        <div
+                          class="mt-1 text-xs"
+                          [class.text-amber-700]="overheadTooHigh()"
+                          [class.text-slate-500]="!overheadTooHigh()"
+                        >
+                          Plafond (10 % des directs) :
+                          <b>{{ allowedIndirectMax() | number : '1.0-0' }}</b> FCFA
+                        </div>
+                        <div
+                          *ngIf="overheadTooHigh()"
+                          class="mt-2 inline-flex items-center gap-1 rounded border border-amber-200 bg-amber-50 px-2 py-1 text-[12px] text-amber-800"
+                        >
+                          Dépassement du plafond des indirects.
+                        </div>
+                      </div>
+
+                      <div class="p-3 border rounded-md">
+                        <div class="text-slate-500">Total projet</div>
+                        <div class="text-lg font-semibold">
+                          {{ totalProject() | number : '1.0-0' }} FCFA
+                        </div>
+                        <div class="text-xs text-slate-500">
+                          Inclut coûts directs + frais indirects
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <!-- Ventilation automatique des frais indirects (affichage) -->
+                  <div
+                    *ngIf="indirectBreakdown().length > 0 && activitiesWithLinesCount() > 1"
+                    class="p-4 mt-4 border rounded-lg"
+                  >
+                    <div class="flex items-center justify-between mb-2">
+                      <h4 class="font-semibold text-slate-900">
+                        Ventilation automatique des frais indirects
+                      </h4>
+                      <span class="text-[12px] text-slate-500"
+                        >Répartition au prorata des coûts directs</span
+                      >
+                    </div>
+
+                    <div class="overflow-x-auto">
+                      <table class="w-full text-sm">
+                        <thead class="text-slate-600">
+                          <tr class="border-b">
+                            <th class="py-1.5 pr-2 text-left">Activité</th>
+                            <th class="py-1.5 pr-2 text-right">Direct (FCFA)</th>
+                            <th class="py-1.5 pr-2 text-right">Part des directs</th>
+                            <th class="py-1.5 pr-2 text-right">Indirects (FCFA)</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr
+                            *ngFor="let r of indirectBreakdown(); trackBy: trackByIndex"
+                            class="border-b"
+                          >
+                            <td class="py-1.5 pr-2">{{ r.title }}</td>
+                            <td class="py-1.5 pr-2 text-right">
+                              {{ r.direct | number : '1.0-0' }}
+                            </td>
+                            <td class="py-1.5 pr-2 text-right">
+                              {{ r.share | percent : '1.0-1' }}
+                            </td>
+                            <td class="py-1.5 pr-2 text-right">
+                              {{ r.indirect | number : '1.0-0' }}
+                            </td>
+                          </tr>
+                        </tbody>
+                        <tfoot>
+                          <tr class="font-semibold bg-slate-50">
+                            <td class="py-1.5 pr-2">Totaux</td>
+                            <td class="py-1.5 pr-2 text-right">
+                              {{ sumDirect() | number : '1.0-0' }}
+                            </td>
+                            <td class="py-1.5 pr-2 text-right">100%</td>
+                            <td class="py-1.5 pr-2 text-right">
+                              {{ totalIndirect() | number : '1.0-0' }}
+                            </td>
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </div>
+
+                    <p class="mt-2 text-[12px] text-slate-500">
+                      Cette ventilation est informative et ne modifie pas la saisie du budget (les
+                      frais indirects sont saisis au niveau global).
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1705,7 +1857,7 @@
           <!-- Étape 5 : Budget global -->
           <div class="p-4 border rounded-lg">
             <h3 class="mb-3 font-semibold text-slate-900">5) Budget global</h3>
-            <div class="grid gap-2 sm:gap-3 text-sm sm:grid-cols-2 md:grid-cols-3">
+            <div class="grid gap-2 text-sm sm:gap-3 sm:grid-cols-2 md:grid-cols-3">
               <div class="p-3 border rounded-md">
                 <div class="text-slate-500">Total direct (activités)</div>
                 <div class="text-lg font-semibold">{{ sumDirect() | number : '1.0-0' }} FCFA</div>
@@ -1729,50 +1881,12 @@
                 </div>
               </div>
             </div>
-
-            <!-- Validation : règle des 10% pour les frais indirects -->
-            @if (indirectCapError) {
-            <div
-              class="mt-3 p-3 border border-amber-300 bg-amber-50 rounded text-sm text-amber-800"
-            >
-              ⚠️ <strong>Attention :</strong> Les frais indirects (overheads) ne peuvent pas
-              dépasser 10 % du budget direct.
-              <br />
-              Plafond autorisé :
-              <strong>{{ sumDirect() * 0.1 | number : '1.0-0' }} FCFA</strong> (actuellement
-              {{ indirectShare() | percent : '1.0-1' }})
-            </div>
-            }
-
-            <!-- Input pour les frais indirects avec affichage du plafond -->
-            <div class="mt-3 p-3 border rounded-md bg-slate-50">
-              <label class="block text-sm font-medium text-slate-700 mb-2">
-                Frais indirects (overheads)
-              </label>
-              <input
-                type="number"
-                [formControl]="$any(form.get('indirectOverheads'))"
-                (input)="recomputeIndirectCapGlobal()"
-                class="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-blue-500"
-                [class.border-amber-500]="indirectCapError"
-                placeholder="Montant en FCFA"
-              />
-              <div class="mt-1 text-xs text-slate-600">
-                Maximum autorisé (10% du direct) :
-                <strong>{{ sumDirect() * 0.1 | number : '1.0-0' }} FCFA</strong>
-              </div>
-              @if (indirectCapError) {
-              <div class="mt-1 text-xs text-amber-700">
-                ⚠️ Le montant saisi dépasse le plafond de 10%
-              </div>
-              }
-            </div>
           </div>
 
           <!-- Étape 6 : État & financement -->
           <div class="p-4 border rounded-lg">
             <h3 class="mb-3 font-semibold text-slate-900">6) État & financement</h3>
-            <div class="grid gap-2 sm:gap-3 text-sm md:grid-cols-2">
+            <div class="grid gap-2 text-sm sm:gap-3 md:grid-cols-2">
               <div>
                 <div class="text-slate-500">Stade</div>
                 <div class="font-medium">
@@ -1944,38 +2058,28 @@
           </div>
 
           <!-- Actions -->
-          <div class="flex flex-col sm:flex-row gap-2 sm:gap-3 pt-2">
-            <button class="px-4 py-2 border rounded-lg" (click)="prev()">Retour</button>
+          <div class="flex flex-col gap-2 pt-2 sm:flex-row sm:gap-3">
             <button
-              class="px-4 py-2 text-white rounded-lg bg-emerald-600 disabled:bg-slate-300 disabled:cursor-not-allowed flex items-center justify-center gap-2 min-w-[180px]"
+              class="px-4 py-2 border rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+              (click)="prev()"
+              [disabled]="isSubmitting()"
+            >
+              Retour
+            </button>
+            <button
+              class="px-4 py-2 text-white rounded-lg bg-emerald-600 disabled:bg-slate-300 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-all"
               (click)="submit()"
               [disabled]="getMissingRequiredDocuments().length > 0 || isSubmitting()"
             >
-              <!-- Spinner de chargement -->
-              <svg
-                *ngIf="isSubmitting()"
-                class="animate-spin h-5 w-5 text-white"
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-              >
-                <circle
-                  class="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  stroke-width="4"
-                ></circle>
-                <path
-                  class="opacity-75"
-                  fill="currentColor"
-                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                ></path>
-              </svg>
-
-              <!-- Texte dynamique -->
-              <span>{{ isSubmitting() ? 'Envoi en cours...' : 'Soumettre le projet' }}</span>
+              @if (isSubmitting()) {
+                <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <span>Envoi en cours...</span>
+              } @else {
+                <span>Soumettre le projet</span>
+              }
             </button>
           </div>
         </div>
@@ -1993,96 +2097,23 @@
   </div>
 
   <!-- =============================================
-       OVERLAY DE CHARGEMENT PENDANT SOUMISSION
-       ============================================= -->
-  <div
-    *ngIf="isSubmitting()"
-    class="fixed inset-0 z-50 flex flex-col items-center justify-center p-4 bg-gradient-to-br from-emerald-900/95 to-blue-900/95 backdrop-blur-md"
-  >
-    <!-- Animation de chargement -->
-    <div class="text-center">
-      <!-- Spinner principal -->
-      <div class="relative mb-8">
-        <!-- Cercle extérieur tournant -->
-        <div class="w-24 h-24 sm:w-32 sm:h-32 mx-auto">
-          <svg class="animate-spin" viewBox="0 0 50 50">
-            <circle
-              class="stroke-current text-emerald-400 opacity-25"
-              cx="25"
-              cy="25"
-              r="20"
-              fill="none"
-              stroke-width="4"
-            ></circle>
-            <circle
-              class="stroke-current text-emerald-400"
-              cx="25"
-              cy="25"
-              r="20"
-              fill="none"
-              stroke-width="4"
-              stroke-dasharray="80"
-              stroke-dashoffset="60"
-              stroke-linecap="round"
-            ></circle>
-          </svg>
-        </div>
-
-        <!-- Icône au centre -->
-        <div class="absolute inset-0 flex items-center justify-center">
-          <svg
-            class="w-10 h-10 sm:w-12 sm:h-12 text-white animate-pulse"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-            ></path>
-          </svg>
-        </div>
-      </div>
-
-      <!-- Texte de chargement -->
-      <div class="space-y-3">
-        <h3 class="text-2xl sm:text-3xl font-bold text-white animate-pulse">
-          📤 Soumission en cours...
-        </h3>
-        <p class="text-sm sm:text-base text-emerald-100 max-w-md mx-auto">
-          Veuillez patienter pendant que nous traitons votre demande et envoyons les emails de confirmation
-        </p>
-
-        <!-- Points de progression animés -->
-        <div class="flex items-center justify-center gap-2 pt-4">
-          <div class="w-2 h-2 bg-white rounded-full animate-bounce" style="animation-delay: 0ms"></div>
-          <div class="w-2 h-2 bg-white rounded-full animate-bounce" style="animation-delay: 150ms"></div>
-          <div class="w-2 h-2 bg-white rounded-full animate-bounce" style="animation-delay: 300ms"></div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- =============================================
        MODALE DE SUCCÈS APRÈS SOUMISSION
        ============================================= -->
   <div
     *ngIf="showSuccessModal"
-    class="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/40 backdrop-blur-sm"
+    class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
   >
     <div
-      class="relative w-full max-w-2xl overflow-hidden bg-white shadow-2xl rounded-xl sm:rounded-2xl ring-1 ring-black/5 animate-fade-in max-h-[95vh] overflow-y-auto"
+      class="relative w-full max-w-2xl overflow-hidden bg-white shadow-2xl rounded-2xl ring-1 ring-black/5 animate-fade-in"
     >
       <!-- Header avec icône de succès -->
-      <div class="relative p-4 sm:p-6 md:p-8 text-center bg-gradient-to-br from-emerald-50 to-white">
+      <div class="relative p-8 text-center bg-gradient-to-br from-emerald-50 to-white">
         <!-- Icône de succès animée -->
         <div
-          class="flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-3 sm:mb-4 rounded-full bg-emerald-100"
+          class="flex items-center justify-center w-20 h-20 mx-auto mb-4 rounded-full bg-emerald-100"
         >
           <svg
-            class="w-10 h-10 sm:w-12 sm:h-12 text-emerald-600 animate-bounce-short"
+            class="w-12 h-12 text-emerald-600 animate-bounce-short"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -2097,18 +2128,18 @@
         </div>
 
         <!-- Titre -->
-        <h2 class="mb-2 text-xl sm:text-2xl md:text-3xl font-bold text-slate-900">🎉 Projet soumis avec succès !</h2>
-        <p class="text-sm sm:text-base text-slate-600">Votre dossier a été envoyé et est en cours de traitement</p>
+        <h2 class="mb-2 text-3xl font-bold text-slate-900">🎉 Projet soumis avec succès !</h2>
+        <p class="text-slate-600">Votre dossier a été envoyé et est en cours de traitement</p>
       </div>
 
       <!-- Contenu -->
-      <div class="p-4 sm:p-6 md:p-8 space-y-4 sm:space-y-6">
+      <div class="p-8 space-y-6">
         <!-- Résumé de la soumission -->
-        <div class="space-y-3 sm:space-y-4">
+        <div class="space-y-4">
           <!-- Titre du projet -->
-          <div class="flex items-start gap-2 sm:gap-3 p-3 sm:p-4 border rounded-lg bg-slate-50 border-slate-200">
+          <div class="flex items-start gap-3 p-4 border rounded-lg bg-slate-50 border-slate-200">
             <svg
-              class="w-5 h-5 sm:w-6 sm:h-6 mt-0.5 text-emerald-600 flex-shrink-0"
+              class="w-6 h-6 mt-0.5 text-emerald-600"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -2120,22 +2151,22 @@
                 d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
               ></path>
             </svg>
-            <div class="flex-1 min-w-0">
-              <p class="text-xs sm:text-sm font-medium text-slate-500">Titre du projet</p>
-              <p class="mt-1 text-sm sm:text-base font-semibold text-slate-900 break-words">
+            <div class="flex-1">
+              <p class="text-sm font-medium text-slate-500">Titre du projet</p>
+              <p class="mt-1 text-base font-semibold text-slate-900">
                 {{ submissionSummary?.projectTitle }}
               </p>
             </div>
           </div>
 
           <!-- Statistiques -->
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+          <div class="grid grid-cols-2 gap-4">
             <!-- Documents -->
             <div
-              class="flex items-center gap-2 sm:gap-3 p-3 sm:p-4 border rounded-lg border-emerald-200 bg-emerald-50"
+              class="flex items-center gap-3 p-4 border rounded-lg border-emerald-200 bg-emerald-50"
             >
               <svg
-                class="w-7 h-7 sm:w-8 sm:h-8 text-emerald-600 flex-shrink-0"
+                class="w-8 h-8 text-emerald-600"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -2148,17 +2179,17 @@
                 ></path>
               </svg>
               <div>
-                <p class="text-xl sm:text-2xl font-bold text-emerald-900">
+                <p class="text-2xl font-bold text-emerald-900">
                   {{ submissionSummary?.documentsCount }}
                 </p>
-                <p class="text-[10px] sm:text-xs font-medium text-emerald-700">Document(s) uploadé(s)</p>
+                <p class="text-xs font-medium text-emerald-700">Document(s) uploadé(s)</p>
               </div>
             </div>
 
             <!-- Budget -->
-            <div class="flex items-center gap-2 sm:gap-3 p-3 sm:p-4 border border-blue-200 rounded-lg bg-blue-50">
+            <div class="flex items-center gap-3 p-4 border border-blue-200 rounded-lg bg-blue-50">
               <svg
-                class="w-7 h-7 sm:w-8 sm:h-8 text-blue-600 flex-shrink-0"
+                class="w-8 h-8 text-blue-600"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -2170,21 +2201,21 @@
                   d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
                 ></path>
               </svg>
-              <div class="min-w-0">
-                <p class="text-xl sm:text-2xl font-bold text-blue-900 truncate">
+              <div>
+                <p class="text-2xl font-bold text-blue-900">
                   {{ submissionSummary?.totalBudget || 0 | number : '1.0-0' }}
                 </p>
-                <p class="text-[10px] sm:text-xs font-medium text-blue-700">FCFA (Budget total)</p>
+                <p class="text-xs font-medium text-blue-700">FCFA (Budget total)</p>
               </div>
             </div>
           </div>
         </div>
 
         <!-- Informations -->
-        <div class="p-3 sm:p-4 border-l-4 border-blue-400 rounded-r-lg bg-blue-50">
-          <div class="flex items-start gap-2 sm:gap-3">
+        <div class="p-4 border-l-4 border-blue-400 rounded-r-lg bg-blue-50">
+          <div class="flex items-start gap-3">
             <svg
-              class="w-4 h-4 sm:w-5 sm:h-5 mt-0.5 text-blue-600 flex-shrink-0"
+              class="w-5 h-5 mt-0.5 text-blue-600"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -2196,9 +2227,9 @@
                 d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
               ></path>
             </svg>
-            <div class="flex-1 min-w-0">
-              <p class="text-xs sm:text-sm font-semibold text-blue-900">Prochaines étapes</p>
-              <ul class="mt-2 space-y-1 text-xs sm:text-sm text-blue-800">
+            <div class="flex-1">
+              <p class="text-sm font-semibold text-blue-900">Prochaines étapes</p>
+              <ul class="mt-2 space-y-1 text-sm text-blue-800">
                 <li>✅ Vous recevrez un email de confirmation sous peu</li>
                 <li>📋 Votre dossier sera évalué par le comité technique</li>
                 <li>📧 Nous vous tiendrons informé par email de l'avancement</li>
@@ -2210,13 +2241,13 @@
 
       <!-- Footer avec actions -->
       <div
-        class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-4 px-4 sm:px-6 md:px-8 py-4 sm:py-6 border-t bg-slate-50 border-slate-200"
+        class="flex items-center justify-between gap-4 px-8 py-6 border-t bg-slate-50 border-slate-200"
       >
-        <p class="text-xs sm:text-sm text-slate-600 text-center sm:text-left">Un récapitulatif a été envoyé à votre adresse email</p>
+        <p class="text-sm text-slate-600">Un récapitulatif a été envoyé à votre adresse email</p>
         <button
           type="button"
           (click)="closeSuccessModal()"
-          class="w-full sm:w-auto px-4 sm:px-6 py-2.5 sm:py-3 text-sm sm:text-base font-semibold text-white transition-colors rounded-lg bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
+          class="px-6 py-3 font-semibold text-white transition-colors rounded-lg bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
         >
           Retour au tableau de bord
         </button>

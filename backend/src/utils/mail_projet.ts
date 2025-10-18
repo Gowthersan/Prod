@@ -309,7 +309,9 @@ function generateSupportNotificationTemplate(data: DemandeData): string {
                           Email:
                         </td>
                         <td style="color: #0f766e; font-size: 14px; font-weight: 600;">
-                          <a href="mailto:${data.soumisPar.email}" style="color: #0f766e; text-decoration: none;">${data.soumisPar.email}</a>
+                          <a href="mailto:${data.soumisPar.email}" style="color: #0f766e; text-decoration: none;">${
+    data.soumisPar.email
+  }</a>
                         </td>
                       </tr>
                     </table>
@@ -410,7 +412,9 @@ function generateSupportNotificationTemplate(data: DemandeData): string {
                     </table>
                   </td>
                 </tr>
-                ${data.activites && data.activites.length > 0 ? `
+                ${
+                  data.activites && data.activites.length > 0
+                    ? `
                 <tr>
                   <td style="padding: 8px 0;">
                     <table role="presentation" style="width: 100%;">
@@ -425,8 +429,12 @@ function generateSupportNotificationTemplate(data: DemandeData): string {
                     </table>
                   </td>
                 </tr>
-                ` : ''}
-                ${data.attachments && data.attachments.length > 0 ? `
+                `
+                    : ''
+                }
+                ${
+                  data.attachments && data.attachments.length > 0
+                    ? `
                 <tr>
                   <td style="padding: 8px 0;">
                     <table role="presentation" style="width: 100%;">
@@ -441,14 +449,16 @@ function generateSupportNotificationTemplate(data: DemandeData): string {
                     </table>
                   </td>
                 </tr>
-                ` : ''}
+                `
+                    : ''
+                }
               </table>
 
               <!-- Bouton d'action -->
               <table role="presentation" style="width: 100%; margin-top: 30px;">
                 <tr>
                   <td align="center">
-                    <a href="https://guichetnumerique.fpbg.ga/admin/demandes"
+                    <a href="https://guichetnumerique.fpbg.ga/admin/dashboard"
                        style="display: inline-block; padding: 14px 32px; background: linear-gradient(135deg, #0f766e 0%, #115e59 100%); color: #ffffff; text-decoration: none; border-radius: 10px; font-weight: 600; font-size: 14px; box-shadow: 0 4px 12px rgba(15, 118, 110, 0.3);">
                       🔍 Voir la demande complète
                     </a>
@@ -505,7 +515,7 @@ export async function sendProjectSubmissionEmails(data: DemandeData): Promise<vo
       subject: `✅ Confirmation de soumission - ${data.titre}`,
       html: userHtml
     });
-    console.log('[SUCCESS] Email de confirmation envoyé à l\'utilisateur');
+    console.log("[SUCCESS] Email de confirmation envoyé à l'utilisateur");
 
     // 2. Email au support
     console.log(`[SENDING] Envoi notification au support...`);
@@ -519,9 +529,8 @@ export async function sendProjectSubmissionEmails(data: DemandeData): Promise<vo
       html: supportHtml
     });
     console.log('[SUCCESS] Email de notification envoyé au support\n');
-
   } catch (error: any) {
-    console.error('[ERROR] Erreur d\'envoi d\'email:', error.message);
-    throw new Error('Impossible d\'envoyer les emails de confirmation');
+    console.error("[ERROR] Erreur d'envoi d'email:", error.message);
+    throw new Error("Impossible d'envoyer les emails de confirmation");
   }
 }
