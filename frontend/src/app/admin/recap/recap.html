@@ -255,30 +255,44 @@
     </article>
 
     <!-- Étape 9 -->
-    <!-- Étape 9 -->
     <article *ngIf="stepIndex() === 8" class="card">
       <h2 class="card-title">9. Annexes</h2>
 
-      <ul class="annexes">
-        <li
-          *ngFor="
-            let key of submission()?.attachments ? Object.keys(submission()!.attachments!) : []
-          "
-          class="annexe-row"
-        >
-          <div class="annexe-meta">
-            <span class="annexe-key">{{ key }}</span>
-            <span class="annexe-name muted">{{ submission()!.attachments![key] }}</span>
+      <div *ngIf="getAttachmentsArray().length > 0; else noAttachments" class="annexes-grid">
+        <div *ngFor="let attachment of getAttachmentsArray()" class="annexe-card">
+          <div class="annexe-icon">📄</div>
+          <div class="annexe-info">
+            <h4 class="annexe-label">{{ attachment.label }}</h4>
+            <p class="annexe-filename">{{ attachment.fileName }}</p>
+            <p class="annexe-size muted" *ngIf="attachment.fileSize">
+              {{ formatFileSize(attachment.fileSize) }}
+            </p>
           </div>
-
           <div class="annexe-actions">
-            <!-- Ouvrir dans un nouvel onglet -->
-            <a class="btn btn-ghost" (click)="showFile(projets.lP!)"> Telechargement </a>
+            <button
+              *ngIf="hasPdfContent(attachment)"
+              class="btn btn-ghost btn-sm"
+              (click)="showPdf(attachment)"
+            >
+              👁️ Visualiser
+            </button>
+            <button
+              *ngIf="hasPdfContent(attachment)"
+              class="btn btn-brand btn-sm"
+              (click)="downloadPdf(attachment)"
+            >
+              📥 Télécharger
+            </button>
+            <span *ngIf="!hasPdfContent(attachment)" class="no-content muted">
+              Fichier non disponible
+            </span>
           </div>
-        </li>
+        </div>
+      </div>
 
-        <li *ngIf="!submission()?.attachments">—</li>
-      </ul>
+      <ng-template #noAttachments>
+        <p class="muted">Aucune pièce jointe</p>
+      </ng-template>
     </article>
 
     <!-- Navigation bas de page (mêmes boutons/logic) -->
@@ -308,8 +322,20 @@
         {{ modal()?.text || '—' }}
       </div>
       <footer class="modal-foot">
-        <button class="btn btn-brand w100" (click)="closeModal()">J’ai compris</button>
+        <button class="btn btn-brand w100" (click)="closeModal()">J'ai compris</button>
       </footer>
+    </div>
+  </div>
+
+  <!-- Visualiseur PDF Modal -->
+  <div *ngIf="selectedPdfUrl()" class="pdf-modal">
+    <div class="pdf-modal-backdrop" (click)="closePdfViewer()"></div>
+    <div class="pdf-modal-content">
+      <div class="pdf-modal-header">
+        <h3>{{ selectedPdfFileName() }}</h3>
+        <button class="btn btn-ghost" (click)="closePdfViewer()">✕ Fermer</button>
+      </div>
+      <iframe [src]="selectedPdfUrl()" class="pdf-iframe"></iframe>
     </div>
   </div>
 </section>
@@ -616,6 +642,213 @@
     .nodes {
       grid-template-columns: repeat(3, 1fr);
       row-gap: 10px;
+    }
+  }
+
+  /* PDF Annexes Grid */
+  .annexes-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 16px;
+    margin-top: 12px;
+  }
+
+  .annexe-card {
+    background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+    border: 2px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .annexe-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--brand-teal) 0%, var(--brand-green) 100%);
+    transform: scaleX(0);
+    transition: transform 0.3s ease;
+  }
+
+  .annexe-card:hover {
+    border-color: var(--brand-teal);
+    box-shadow: 0 4px 16px rgba(11, 31, 44, 0.15);
+    transform: translateY(-2px);
+  }
+
+  .annexe-card:hover::before {
+    transform: scaleX(1);
+  }
+
+  .annexe-icon {
+    font-size: 40px;
+    text-align: center;
+    opacity: 0.8;
+  }
+
+  .annexe-info {
+    flex: 1;
+    text-align: center;
+  }
+
+  .annexe-label {
+    margin: 0 0 6px 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--ink-900);
+    line-height: 1.3;
+  }
+
+  .annexe-filename {
+    margin: 0 0 4px 0;
+    font-size: 12px;
+    color: var(--ink-600);
+    word-break: break-word;
+    line-height: 1.4;
+  }
+
+  .annexe-size {
+    margin: 0;
+    font-size: 11px;
+    color: var(--ink-600);
+  }
+
+  .annexe-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding-top: 10px;
+    border-top: 1px solid #e2e8f0;
+  }
+
+  .btn-sm {
+    padding: 6px 12px;
+    font-size: 12px;
+    border-radius: 8px;
+    font-weight: 500;
+  }
+
+  .no-content {
+    text-align: center;
+    padding: 6px;
+    font-size: 12px;
+    font-style: italic;
+  }
+
+  /* PDF Modal Viewer */
+  .pdf-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .pdf-modal-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.75);
+    backdrop-filter: blur(6px);
+    cursor: pointer;
+  }
+
+  .pdf-modal-content {
+    position: relative;
+    width: min(1100px, 95vw);
+    height: min(750px, 90vh);
+    background: #ffffff;
+    border-radius: 16px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .pdf-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    background: linear-gradient(135deg, var(--brand-teal) 0%, #064e3b 100%);
+    border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+    flex-shrink: 0;
+  }
+
+  .pdf-modal-header h3 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .pdf-modal-header h3::before {
+    content: '📄';
+    font-size: 20px;
+  }
+
+  .pdf-modal-header .btn-ghost {
+    border-color: rgba(255, 255, 255, 0.3);
+    color: #ffffff;
+    background: rgba(255, 255, 255, 0.1);
+    padding: 6px 12px;
+    font-size: 13px;
+  }
+
+  .pdf-modal-header .btn-ghost:hover {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.5);
+  }
+
+  .pdf-iframe {
+    flex: 1;
+    width: 100%;
+    border: none;
+    background: #ffffff;
+  }
+
+  /* Responsive PDF styles */
+  @media (max-width: 768px) {
+    .annexes-grid {
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+
+    .annexe-card {
+      padding: 14px;
+    }
+
+    .annexe-icon {
+      font-size: 36px;
+    }
+
+    .annexe-label {
+      font-size: 13px;
+    }
+
+    .pdf-modal-content {
+      width: 100vw;
+      height: 100vh;
+      border-radius: 0;
+    }
+
+    .pdf-modal-header {
+      padding: 14px 16px;
+    }
+
+    .pdf-modal-header h3 {
+      font-size: 14px;
     }
   }
 </style>

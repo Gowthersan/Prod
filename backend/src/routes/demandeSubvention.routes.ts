@@ -68,14 +68,47 @@ router.post('/submit-json', authenticate, async (req, res: Response, next: NextF
     console.log('📥 Réception soumission projet (JSON) :');
     console.log('  - Utilisateur:', idUtilisateur);
     console.log('  - Titre:', projectData.title);
+    console.log('  - Attachments:', projectData.attachments?.length || 0);
 
-    // Appeler le service pour créer la demande (sans fichiers)
+    // Appeler le service pour créer la demande (sans fichiers physiques)
     const demande = await demandeSubventionService.soumettre(
       projectData,
-      {}, // Pas de fichiers
+      {}, // Pas de fichiers physiques
       [], // Pas d'index de fichiers
       idUtilisateur
     );
+
+    // Préparer les données pour l'envoi d'emails avec les PDFs
+    try {
+      const emailData: DemandeData = {
+        titre: projectData.title || 'Projet sans titre',
+        organisation: {
+          nom: demande?.organisation?.nom || 'Organisation inconnue',
+          email: demande?.organisation?.email || null,
+          telephone: demande?.organisation?.telephone || null
+        },
+        soumisPar: {
+          nom: demande?.soumisPar?.nom || null,
+          prenom: demande?.soumisPar?.prenom || null,
+          email: demande?.soumisPar?.email || 'email@inconnu.com'
+        },
+        domaines: projectData.domains || [],
+        localisation: projectData.location || 'Non spécifié',
+        montantTotal: projectData.totalBudget || 0,
+        dureeMois: projectData.durationMonths || 12,
+        activites: projectData.activities || [],
+        risques: projectData.risks || [],
+        attachments: projectData.attachments || [] // 🎯 Inclure les PDFs en base64
+      };
+
+      // Envoyer les emails de confirmation et notification avec PDFs
+      console.log('📧 Envoi des emails de confirmation avec PDFs...');
+      await sendProjectSubmissionEmails(emailData);
+      console.log('✅ Emails envoyés avec succès');
+    } catch (emailError: any) {
+      // Log l'erreur mais ne bloque pas la soumission
+      console.error("⚠️ Erreur lors de l'envoi des emails (non bloquant):", emailError.message);
+    }
 
     res.status(201).json({
       message: 'Projet soumis avec succès.',

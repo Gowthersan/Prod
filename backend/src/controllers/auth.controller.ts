@@ -39,6 +39,15 @@ export class AuthController {
     try {
       const orgData = req.body as OrganisationDTO;
 
+      console.log('📥 [CONTROLLER] Données reçues du frontend:', {
+        prenom: orgData.prenom,
+        nom: orgData.nom,
+        personneContact: orgData.personneContact,
+        email: orgData.email,
+        telephone: orgData.telephone,
+        telephoneContact: orgData.telephoneContact
+      });
+
       if (!orgData.email || !orgData.motDePasse) {
         return res.status(400).json({ message: 'Email et mot de passe sont requis.' });
       }

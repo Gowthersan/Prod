@@ -43,6 +43,7 @@ import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { Router } from '@angular/router';
 import { debounceTime } from 'rxjs/operators';
 import { environment } from '../../../../environments/environment';
+import { PdfService } from '../../../services/pdf.service';
 
 /* ==============================
    Constantes & petites utilités
@@ -51,15 +52,8 @@ const LS_DRAFT_KEY = 'fpbg_submission_v3';
 const LS_STEP_KEY = 'fpbg_submission_step_v3';
 const DRAFT_META_KEY = 'fpbg.nc.draft'; // méta simple pour dashboard/aperçus
 
-const ALLOWED_MIME = [
-  'application/pdf',
-  'application/msword',
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-  'application/vnd.ms-excel',
-  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-  'image/jpeg',
-  'image/png',
-];
+// ⚠️ MODIFICATION: Accepter uniquement les PDF pour les pièces jointes
+const ALLOWED_MIME = ['application/pdf'];
 const MAX_FILE_BYTES = 10 * 1024 * 1024; // 10 Mo
 
 /* ---- Validators ---- */
@@ -177,6 +171,7 @@ export class SubmissionWizard {
   private sanitizer = inject(DomSanitizer);
   private http = inject(HttpClient);
   private cdr = inject(ChangeDetectorRef);
+  private pdfService = inject(PdfService);
 
   // Type d'organisation de l'utilisateur connecté
   usertype: string = '';
@@ -235,6 +230,9 @@ export class SubmissionWizard {
       selected: boolean;
       file: File | null;
       uploaded: boolean;
+      base64?: string; // Contenu Base64 du PDF
+      fileName?: string; // Nom du fichier
+      fileSize?: number; // Taille du fichier
     }
   > = new Map();
 
@@ -1465,23 +1463,30 @@ export class SubmissionWizard {
   /**
    * Upload un document
    */
-  uploadDocument(key: string, file: File): void {
-    // Validation du fichier
-    if (file.size > MAX_FILE_BYTES) {
-      alert('Le fichier est trop volumineux (max 10 Mo)');
-      return;
-    }
-    if (!ALLOWED_MIME.includes(file.type)) {
-      alert('Type de fichier non autorisé');
+  async uploadDocument(key: string, file: File): Promise<void> {
+    // Validation avec le PdfService
+    const validation = this.pdfService.validatePdfFile(file);
+    if (!validation.valid) {
+      alert(validation.error || 'Le fichier n\'est pas valide');
       return;
     }
 
-    // Mettre à jour l'état
+    // Convertir le PDF en Base64
+    const conversion = await this.pdfService.convertPdfToBase64(file);
+    if (!conversion.success) {
+      alert(conversion.error || 'Erreur lors de la conversion du fichier');
+      return;
+    }
+
+    // Mettre à jour l'état avec le Base64
     const state = this.documentsState.get(key);
     if (state) {
       state.file = file;
       state.uploaded = true;
       state.selected = false;
+      state.base64 = conversion.base64;
+      state.fileName = conversion.fileName;
+      state.fileSize = conversion.fileSize;
     }
 
     // Mettre à jour le FormControl et marquer comme valide
@@ -1492,7 +1497,7 @@ export class SubmissionWizard {
       control.updateValueAndValidity();
     }
 
-    console.log(`✅ Document uploadé: ${key} - ${file.name}`);
+    console.log(`✅ Document uploadé et converti en Base64: ${key} - ${file.name}`);
   }
 
   /**
@@ -1504,6 +1509,9 @@ export class SubmissionWizard {
       state.file = null;
       state.uploaded = false;
       state.selected = false;
+      state.base64 = undefined;
+      state.fileName = undefined;
+      state.fileSize = undefined;
     }
 
     // Réinitialiser le FormControl
@@ -2067,15 +2075,19 @@ export class SubmissionWizard {
       // Collaborateurs (si présents)
       collaborateurs: [],
 
-      // Pièces jointes - uniquement les noms des fichiers
-      attachments: this.getUploadedDocuments().map((doc) => ({
-        key: doc.key,
-        label: doc.label,
-        fileName: doc.file?.name || '',
-        fileSize: doc.file?.size || 0,
-        fileType: doc.file?.type || '',
-        required: doc.required,
-      })),
+      // Pièces jointes - avec contenu Base64
+      attachments: this.getUploadedDocuments().map((doc) => {
+        const state = this.documentsState.get(doc.key);
+        return {
+          key: doc.key,
+          label: doc.label,
+          fileName: state?.fileName || doc.file?.name || '',
+          fileSize: state?.fileSize || doc.file?.size || 0,
+          fileType: doc.file?.type || 'application/pdf',
+          required: doc.required,
+          base64: state?.base64 || '', // Contenu Base64 du PDF
+        };
+      }),
     };
 
     // Logs pour debug

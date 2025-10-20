@@ -44,7 +44,7 @@ export class CookieInterceptor implements HttpInterceptor {
         // ✅ Ne déconnecter que sur les routes d'authentification (/auth/me, /auth/login, etc.)
         // Pour les autres routes, on laisse passer l'erreur sans déconnecter
         if ((error.status === 401 || error.status === 403) &&
-            (req.url.includes('/auth/') || req.url.includes('/me'))) {
+            (req.url.includes('/auth/me') || req.url.includes('/auth/login') || req.url.endsWith('/me'))) {
           console.warn('Session expirée ou non autorisée pour:', req.url);
 
           // ✅ Seulement déconnecter si on n'est pas déjà sur une page de login

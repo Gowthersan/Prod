@@ -1,24 +1,58 @@
+import type { Transporter } from 'nodemailer';
 import nodemailer from 'nodemailer';
 
 /**
- * Configuration SMTP pour l'envoi d'emails de projet
+ * Crée un transporter SMTP pour l'envoi d'emails utilisateur (singcloud)
  */
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST || 'mail.singcloud.ga',
-  port: parseInt(process.env.SMTP_PORT || '465'),
-  secure: true,
-  auth: {
-    user: process.env.SMTP_USER || 'no-reply-fpbg@singcloud.ga',
-    pass: process.env.SMTP_PASS || ''
-  },
-  tls: {
-    rejectUnauthorized: false,
-    minVersion: 'TLSv1.2'
-  },
-  authMethod: 'LOGIN',
-  debug: false,
-  logger: false
-});
+function createUserTransporter(): Transporter {
+  console.log('[SMTP USER] Création du transporter pour utilisateur...');
+  console.log(`[SMTP USER] Host: ${process.env.SMTP_HOST || 'mail.singcloud.ga'}`);
+  console.log(`[SMTP USER] User: ${process.env.SMTP_USER || 'no-reply-fpbg@singcloud.ga'}\n`);
+
+  return nodemailer.createTransport({
+    service: 'gmail',
+    host: process.env.SMTP_HOST || 'mail.singcloud.ga',
+    port: parseInt(process.env.SMTP_PORT || '465'),
+    secure: true,
+    auth: {
+      user: process.env.SMTP_USER || 'no-reply-fpbg@singcloud.ga',
+      pass: process.env.SMTP_PASS || ''
+    },
+    tls: {
+      rejectUnauthorized: false,
+      minVersion: 'TLSv1.2'
+    },
+    authMethod: 'LOGIN',
+    debug: false,
+    logger: false
+  });
+}
+
+/**
+ * Crée un transporter Gmail pour l'envoi d'emails au support
+ */
+function createSupportTransporter(): Transporter {
+  console.log('[SMTP SUPPORT] Création du transporter Gmail pour support...');
+  console.log(`[SMTP SUPPORT] Service: Gmail`);
+  console.log(`[SMTP SUPPORT] User: ${process.env.SMTP_USER || 'NON DÉFINI'}\n`);
+
+  const emailUser = process.env.SMTP_USER;
+  const emailPass = process.env.SMTP_PASS;
+
+  if (!emailUser || !emailPass) {
+    throw new Error(
+      "SMTP_USER et SMTP_PASS doivent être définis dans les variables d'environnement pour l'envoi au support"
+    );
+  }
+
+  return nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+      user: emailUser,
+      pass: emailPass
+    }
+  });
+}
 
 /**
  * Interface pour les données du projet
@@ -38,12 +72,28 @@ export interface DemandeData {
   domaines: string[];
   localisation: string;
   montantTotal: number;
-  dureeMois: number;
+  objectifs?: string;
+  dureeMois?: number;
   activites?: any[];
+  contextJustification?: string;
+  expectedResults?: string;
+  dateDebutActivites?: Date;
+  dateFinActivites?: Date;
+  activitiesSummary?: string;
+  groupeCible: string;
+  usdRate: number;
+  indirectOverheads?: number;
+  hasFunding: boolean;
+  fundingDetails?: string;
+  sustainability: string;
+  replicability?: string;
+  projectStage?: string;
   risques?: any[];
   attachments?: Array<{
     label: string;
     fileName: string;
+    base64?: string;
+    url?: string;
   }>;
 }
 
@@ -186,6 +236,50 @@ function generateUserConfirmationTemplate(data: DemandeData): string {
                   </td>
                 </tr>
               </table>
+
+              <!-- Pièces jointes PDF -->
+              ${
+                data.attachments && data.attachments.length > 0
+                  ? `
+              <table role="presentation" style="width: 100%; background-color: #eff6ff; border-radius: 12px; padding: 20px; margin-top: 20px;">
+                <tr>
+                  <td>
+                    <h2 style="margin: 0 0 15px 0; color: #1e40af; font-size: 18px; font-weight: 600;">
+                      📎 Documents soumis
+                    </h2>
+                  </td>
+                </tr>
+                ${data.attachments
+                  .map(
+                    (attachment) => `
+                <tr>
+                  <td style="padding: 10px 0;">
+                    <table role="presentation" style="width: 100%; background-color: white; border-radius: 8px; padding: 15px; border: 1px solid #dbeafe;">
+                      <tr>
+                        <td style="width: 50px; vertical-align: middle;">
+                          <div style="width: 40px; height: 40px; background-color: #dbeafe; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 20px;">
+                            📄
+                          </div>
+                        </td>
+                        <td style="vertical-align: middle; padding-left: 15px;">
+                          <div style="color: #1e293b; font-weight: 600; font-size: 14px; margin-bottom: 4px;">
+                            ${attachment.label || 'Document'}
+                          </div>
+                          <div style="color: #64748b; font-size: 12px;">
+                            ${attachment.fileName}
+                          </div>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+                `
+                  )
+                  .join('')}
+              </table>
+              `
+                  : ''
+              }
 
               <!-- Prochaines étapes -->
               <div style="background-color: #eff6ff; border-left: 4px solid #3b82f6; border-radius: 8px; padding: 20px; margin: 20px 0;">
@@ -454,6 +548,61 @@ function generateSupportNotificationTemplate(data: DemandeData): string {
                 }
               </table>
 
+              <!-- Pièces jointes PDF -->
+              ${
+                data.attachments && data.attachments.length > 0
+                  ? `
+              <table role="presentation" style="width: 100%; background-color: #eff6ff; border-radius: 12px; padding: 20px; margin-top: 20px;">
+                <tr>
+                  <td>
+                    <h2 style="margin: 0 0 15px 0; color: #1e40af; font-size: 18px; font-weight: 600;">
+                      📎 Pièces Jointes
+                    </h2>
+                  </td>
+                </tr>
+                ${data.attachments
+                  .map(
+                    (attachment) => `
+                <tr>
+                  <td style="padding: 10px 0;">
+                    <table role="presentation" style="width: 100%; background-color: white; border-radius: 8px; padding: 15px; border: 1px solid #dbeafe;">
+                      <tr>
+                        <td style="width: 50px; vertical-align: middle;">
+                          <div style="width: 40px; height: 40px; background-color: #dbeafe; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 20px;">
+                            📄
+                          </div>
+                        </td>
+                        <td style="vertical-align: middle; padding-left: 15px;">
+                          <div style="color: #1e293b; font-weight: 600; font-size: 14px; margin-bottom: 4px;">
+                            ${attachment.label || 'Document'}
+                          </div>
+                          <div style="color: #64748b; font-size: 12px;">
+                            ${attachment.fileName}
+                          </div>
+                        </td>
+                        <td style="text-align: right; vertical-align: middle;">
+                          ${
+                            attachment.base64
+                              ? `<a href="data:application/pdf;base64,${attachment.base64}"
+                                   download="${attachment.fileName}"
+                                   style="display: inline-block; padding: 8px 16px; background-color: #3b82f6; color: white; text-decoration: none; border-radius: 6px; font-size: 12px; font-weight: 600;">
+                                  📥 Télécharger
+                                </a>`
+                              : `<span style="color: #64748b; font-size: 12px;">PDF joint</span>`
+                          }
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+                `
+                  )
+                  .join('')}
+              </table>
+              `
+                  : ''
+              }
+
               <!-- Bouton d'action -->
               <table role="presentation" style="width: 100%; margin-top: 30px;">
                 <tr>
@@ -502,35 +651,75 @@ export async function sendProjectSubmissionEmails(data: DemandeData): Promise<vo
   console.log(`Utilisateur: ${data.soumisPar.email}`);
   console.log('='.repeat(80) + '\n');
 
-  const supportEmail = process.env.SUPPORT_EMAIL || 'support@fpbg.ga';
+  const supportEmail = 'gauthier.mintsa.02@gmail.com';
+
+  // Prepare PDF attachments from base64
+  const emailAttachments: Array<{ filename: string; content: Buffer; contentType: string }> = [];
+
+  if (data.attachments && data.attachments.length > 0) {
+    console.log(`[ATTACHMENTS] Préparation de ${data.attachments.length} pièce(s) jointe(s)`);
+
+    for (const attachment of data.attachments) {
+      if (attachment.base64) {
+        try {
+          // Convert base64 to Buffer
+          const buffer = Buffer.from(attachment.base64, 'base64');
+          emailAttachments.push({
+            filename: attachment.fileName || 'document.pdf',
+            content: buffer,
+            contentType: 'application/pdf'
+          });
+          console.log(`[ATTACHMENTS] ✓ ${attachment.fileName} ajouté (${(buffer.length / 1024).toFixed(2)} KB)`);
+        } catch (error) {
+          console.error(`[ATTACHMENTS] ✗ Erreur conversion ${attachment.fileName}:`, error);
+        }
+      }
+    }
+
+    console.log(`[ATTACHMENTS] ${emailAttachments.length} document(s) prêt(s) pour envoi\n`);
+  }
 
   try {
-    // 1. Email à l'utilisateur
+    // 1. Email à l'utilisateur (via singcloud)
+    const userTransporter = createUserTransporter();
     console.log(`[SENDING] Envoi email de confirmation à l'utilisateur...`);
+    console.log(`[DEBUG] De: ${process.env.SMTP_USER}`);
+    console.log(`[DEBUG] Vers: ${data.soumisPar.email}`);
     const userHtml = generateUserConfirmationTemplate(data);
 
-    await transporter.sendMail({
+    const userResult = await userTransporter.sendMail({
       from: `"FPBG - Fonds pour la Biodiversité" <${process.env.SMTP_USER || 'no-reply-fpbg@singcloud.ga'}>`,
       to: data.soumisPar.email,
       subject: `✅ Confirmation de soumission - ${data.titre}`,
-      html: userHtml
+      html: userHtml,
+      attachments: emailAttachments
     });
     console.log("[SUCCESS] Email de confirmation envoyé à l'utilisateur");
+    console.log(`[DEBUG] MessageId: ${userResult.messageId}`);
+    console.log(`[DEBUG] Response: ${userResult.response}\n`);
 
-    // 2. Email au support
-    console.log(`[SENDING] Envoi notification au support...`);
+    // 2. Email au support (via Gmail)
+    const supportTransporter = createSupportTransporter();
+    console.log(`[SENDING] Envoi notification au support via Gmail...`);
+    console.log(`[DEBUG] De: ${process.env.SMTP_USER}`);
+    console.log(`[DEBUG] Vers: ${supportEmail}`);
+    console.log(`[DEBUG] ReplyTo: ${data.soumisPar.email}`);
     const supportHtml = generateSupportNotificationTemplate(data);
 
-    await transporter.sendMail({
-      from: `"FPBG System" <${process.env.SMTP_USER || 'no-reply-fpbg@singcloud.ga'}>`,
+    const supportResult = await supportTransporter.sendMail({
+      from: `"FPBG - Notification" <${process.env.SMTP_USER}>`,
       to: supportEmail,
       replyTo: data.soumisPar.email,
       subject: `🆕 Nouvelle demande: ${data.titre} - ${data.organisation.nom}`,
-      html: supportHtml
+      html: supportHtml,
+      attachments: emailAttachments
     });
-    console.log('[SUCCESS] Email de notification envoyé au support\n');
+    console.log('[SUCCESS] Email de notification envoyé au support via Gmail');
+    console.log(`[DEBUG] MessageId: ${supportResult.messageId}`);
+    console.log(`[DEBUG] Response: ${supportResult.response}\n`);
   } catch (error: any) {
     console.error("[ERROR] Erreur d'envoi d'email:", error.message);
+    console.error('[ERROR] Stack:', error.stack);
     throw new Error("Impossible d'envoyer les emails de confirmation");
   }
 }

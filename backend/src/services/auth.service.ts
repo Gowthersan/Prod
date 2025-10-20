@@ -258,13 +258,15 @@ export class AuthService {
             telephoneContact: registrationData.telephoneContact
           });
 
+          // 🎯 Utiliser directement prenom et nom du formulaire
+          // personneContact est généré automatiquement (prenom + nom) côté frontend
           const user = await tx.utilisateur.create({
             data: {
               email: registrationData.email,
               hashMotPasse: registrationData.password,
-              prenom: registrationData.prenom ?? registrationData.personneContact ?? null,
+              prenom: registrationData.prenom ?? null,
               nom: registrationData.nom ?? null,
-              telephone: registrationData.telephone ?? registrationData.telephoneContact ?? null,
+              telephone: registrationData.telephoneContact ?? registrationData.telephone ?? null,
               role: 'UTILISATEUR'
             }
           });
@@ -274,7 +276,8 @@ export class AuthService {
             email: user.email,
             prenom: user.prenom,
             nom: user.nom,
-            telephone: user.telephone
+            telephone: user.telephone,
+            nomComplet: `${user.prenom} ${user.nom}`
           });
 
           // ÉTAPE 2: Mapper le type d'organisation vers l'enum TypeOrganisation
@@ -294,8 +297,11 @@ export class AuthService {
           let idTypeSubvention: number | undefined;
           if (registrationData.typeSubvention) {
             const typeSubventionStr = registrationData.typeSubvention.toLowerCase();
-            const code = typeSubventionStr.includes('petite') ? 'PETITE' :
-                         typeSubventionStr.includes('moyenne') ? 'MOYENNE' : null;
+            const code = typeSubventionStr.includes('petite')
+              ? 'PETITE'
+              : typeSubventionStr.includes('moyenne')
+              ? 'MOYENNE'
+              : null;
 
             if (code) {
               const typeSubvention = await tx.typeSubvention.findUnique({
@@ -323,7 +329,19 @@ export class AuthService {
             }
           });
 
-          return { user, organisation };
+          // ÉTAPE 4: Récupérer l'utilisateur mis à jour avec idOrganisation
+          const updatedUser = await tx.utilisateur.findUnique({
+            where: { id: user.id },
+            include: {
+              organisation: {
+                include: {
+                  typeSubvention: true
+                }
+              }
+            }
+          });
+
+          return { user: updatedUser!, organisation };
         });
 
         // Supprimer les données temporaires
@@ -409,10 +427,12 @@ export class AuthService {
         redirectTo,
         prenom: user.prenom,
         nom: user.nom,
-        organisation: user.organisation ? {
-          nom: user.organisation.nom,
-          typeSubvention: user.organisation.typeSubvention
-        } : null
+        organisation: user.organisation
+          ? {
+              nom: user.organisation.nom,
+              typeSubvention: user.organisation.typeSubvention
+            }
+          : null
       });
 
       const responseData = {

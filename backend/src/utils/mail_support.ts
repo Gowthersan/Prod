@@ -1,24 +1,29 @@
 import nodemailer from 'nodemailer';
+import type { Transporter } from 'nodemailer';
 
 /**
- * Configuration SMTP pour l'envoi d'emails de support
+ * Crée un transporter SMTP pour l'envoi d'emails de support
+ * La création est lazy (à la demande) pour s'assurer que les variables d'environnement sont chargées
  */
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST || 'mail.singcloud.ga',
-  port: parseInt(process.env.SMTP_PORT || '465'),
-  secure: true,
-  auth: {
-    user: process.env.SMTP_USER || 'no-reply-fpbg@singcloud.ga',
-    pass: process.env.SMTP_PASS || ''
-  },
-  tls: {
-    rejectUnauthorized: false,
-    minVersion: 'TLSv1.2'
-  },
-  authMethod: 'LOGIN',
-  debug: false,
-  logger: false
-});
+function createTransporter(): Transporter {
+  return nodemailer.createTransport({
+    service: 'gmail',
+    host: process.env.SMTP_HOST || 'mail.singcloud.ga',
+    port: parseInt(process.env.SMTP_PORT || '465'),
+    secure: true,
+    auth: {
+      user: process.env.SMTP_USER || 'no-reply-fpbg@singcloud.ga',
+      pass: process.env.SMTP_PASS || ''
+    },
+    tls: {
+      rejectUnauthorized: false,
+      minVersion: 'TLSv1.2'
+    },
+    authMethod: 'LOGIN',
+    debug: false,
+    logger: false
+  });
+}
 
 /**
  * Genere un template HTML professionnel pour l'email de support
@@ -114,7 +119,9 @@ function generateSupportEmailTemplate(name: string, email: string, phone: string
                           </table>
                         </td>
                       </tr>
-                      ${phone ? `
+                      ${
+                        phone
+                          ? `
                       <tr>
                         <td style="padding: 8px 0;">
                           <table role="presentation" style="width: 100%;">
@@ -129,7 +136,9 @@ function generateSupportEmailTemplate(name: string, email: string, phone: string
                           </table>
                         </td>
                       </tr>
-                      ` : ''}
+                      `
+                          : ''
+                      }
                     </table>
                   </td>
                 </tr>
@@ -204,7 +213,7 @@ export interface SupportContactData {
  */
 export async function sendSupportEmail(
   data: SupportContactData,
-  supportEmail: string = process.env.SUPPORT_EMAIL || 'support@fpbg.ga'
+  supportEmail: string = 'gauthier.mintsa.02@gmail.com'
 ): Promise<void> {
   console.log('\n' + '='.repeat(80));
   console.log('[SUPPORT EMAIL] ENVOI EN COURS');
@@ -217,18 +226,16 @@ export async function sendSupportEmail(
   console.log(`Message              : ${data.message.substring(0, 100)}${data.message.length > 100 ? '...' : ''}`);
   console.log('='.repeat(80) + '\n');
 
+  // Créer le transporter à la demande pour s'assurer que les variables d'environnement sont chargées
+  const transporter = createTransporter();
+
   try {
     console.log(`[SENDING] Tentative d'envoi d'email de support a ${supportEmail}...`);
 
-    const htmlContent = generateSupportEmailTemplate(
-      data.name,
-      data.email,
-      data.phone || '',
-      data.message
-    );
+    const htmlContent = generateSupportEmailTemplate(data.name, data.email, data.phone || '', data.message);
     console.log('[OK] Template HTML genere');
 
-    console.log('[SMTP] Envoi de l\'email via SMTP...');
+    console.log("[SMTP] Envoi de l'email via SMTP...");
     const info = await transporter.sendMail({
       from: `"FPBG Support System" <${process.env.SMTP_USER || 'no-reply-fpbg@singcloud.ga'}>`,
       to: supportEmail,
@@ -240,11 +247,11 @@ export async function sendSupportEmail(
     console.log('[SUCCESS] Email de support envoye avec succes :', info.messageId);
     console.log('[NOTIFIED] Le support a ete notifie de la nouvelle demande\n');
   } catch (error: any) {
-    console.error('[ERROR] Erreur d\'envoi d\'email de support :');
+    console.error("[ERROR] Erreur d'envoi d'email de support :");
     console.error('   Message:', error.message);
     console.error('   Code:', error.code);
     console.error('   Command:', error.command);
-    throw new Error('Impossible d\'envoyer l\'email de support');
+    throw new Error("Impossible d'envoyer l'email de support");
   }
 }
 
@@ -252,6 +259,7 @@ export async function sendSupportEmail(
  * Verification de la configuration email
  */
 export async function verifySupportEmailConfig(): Promise<boolean> {
+  const transporter = createTransporter();
   try {
     console.log('[CHECK] Verification de la configuration SMTP pour le support...');
     await transporter.verify();

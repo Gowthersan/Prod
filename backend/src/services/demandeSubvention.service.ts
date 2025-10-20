@@ -89,6 +89,7 @@ interface FrontendProjectData {
     fileSize: number;
     fileType: string;
     required: boolean;
+    base64?: string;
   }>;
 }
 
@@ -373,27 +374,8 @@ export class DemandeSubventionService {
             console.log(`🔄 Enregistrement de ${data.attachments.length} pièce(s) jointe(s) (métadonnées)...`);
             let fichiersCreees = 0;
 
-            // Clés valides pour les documents
-            const validKeys = [
-              'LETTRE_MOTIVATION',
-              'CV',
-              'CERTIFICAT_ENREGISTREMENT',
-              'STATUTS_REGLEMENT',
-              'PV_ASSEMBLEE',
-              'RAPPORTS_FINANCIERS',
-              'RCCM',
-              'AGREMENT',
-              'ETATS_FINANCIERS',
-              'DOCUMENTS_STATUTAIRES',
-              'RIB',
-              'LETTRES_SOUTIEN',
-              'PREUVE_NON_FAILLITE',
-              'CARTOGRAPHIE',
-              'FICHE_CIRCUIT',
-              'BUDGET_DETAILLE',
-              'CHRONOGRAMME'
-            ];
-
+            // 🎯 ACCEPTER TOUS LES PDFS - Plus de restriction sur les clés
+            // Toutes les clés de documents sont acceptées maintenant
             for (const attachment of data.attachments) {
               try {
                 // Vérifier que l'attachement a les propriétés requises
@@ -402,13 +384,10 @@ export class DemandeSubventionService {
                   continue;
                 }
 
-                // Vérifier que la clé est valide
-                if (!validKeys.includes(attachment.key)) {
-                  console.warn(`⚠️ Clé de document invalide: ${attachment.key}, ignoré`);
-                  continue;
-                }
+                // 🎯 Sauvegarder le PDF avec son contenu base64 s'il existe
+                const urlPdf = attachment.base64 ? `data:application/pdf;base64,${attachment.base64}` : '';
 
-                // Créer la pièce jointe avec les métadonnées uniquement
+                // Créer la pièce jointe avec les métadonnées + base64
                 await tx.pieceJointe.create({
                   data: {
                     idDemande: nouveleDemande.id,
@@ -417,7 +396,7 @@ export class DemandeSubventionService {
                     typeMime: attachment.fileType || 'application/pdf',
                     tailleOctets: attachment.fileSize || 0,
                     cleStockage: attachment.fileName, // Nom du fichier uniquement
-                    url: '', // Pas d'URL pour l'instant
+                    url: urlPdf, // 🎯 URL avec base64 pour accès direct
                     requis: attachment.required || false
                   }
                 });
@@ -479,7 +458,7 @@ export class DemandeSubventionService {
             }
           });
         },
-        { timeout: 125000 }
+        { timeout: 300000 }
       );
 
       console.log('🎉 Projet soumis avec succès !');
@@ -711,7 +690,7 @@ export class DemandeSubventionService {
 
           return demandeCree;
         },
-        { timeout: 125000 }
+        { timeout: 300000 }
       );
 
       return demande;
@@ -777,7 +756,7 @@ export class DemandeSubventionService {
             }
           });
         },
-        { timeout: 125000 }
+        { timeout: 300000 }
       );
 
       // Calculer le montantTotal pour chaque demande
@@ -869,7 +848,7 @@ export class DemandeSubventionService {
             }
           });
         },
-        { timeout: 125000 }
+        { timeout: 300000 }
       );
 
       // 3️⃣ DOUBLE VÉRIFICATION : EMAIL + ID pour garantir que c'est le bon utilisateur

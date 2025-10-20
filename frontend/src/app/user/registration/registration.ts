@@ -53,7 +53,6 @@ export class Registration {
     // ÉTAPE 2 — demandeur + credentials
     prenom: ['', Validators.required],
     nom: ['', Validators.required],
-    personneContact: ['', Validators.required],
     fonction: [''],
     telephoneContact: ['', [Validators.required, gabonPhoneValidator()]],
     // email: ['', [Validators.required, Validators.email]],
@@ -134,6 +133,15 @@ export class Registration {
 
     this.loading.set(true);
 
+    // 🚀 DÉBOGAGE: Afficher les valeurs du formulaire
+    console.log('📋 [FORM DEBUG] Valeurs complètes:', this.form.value);
+    console.log('📋 [FORM DEBUG] prenom:', this.form.value.prenom);
+    console.log('📋 [FORM DEBUG] nom:', this.form.value.nom);
+
+    // 🎯 Générer personneContact automatiquement depuis prenom + nom
+    const personneContact = `${this.form.value.prenom} ${this.form.value.nom}`.trim();
+    console.log('📋 [FORM DEBUG] personneContact généré:', personneContact);
+
     const data = {
       // Organisation
       nom_organisation: this.form.value.nom_organisation!,
@@ -145,12 +153,14 @@ export class Registration {
       // Utilisateur
       prenom: this.form.value.prenom!,
       nom: this.form.value.nom!,
-      personneContact: this.form.value.personneContact!,
+      personneContact, // 🎯 Généré automatiquement = prenom + nom
       fonction: this.form.value.fonction || '',
       telephoneContact: this.form.value.telephoneContact!,
       // email: this.form.value.email!,
       motDePasse: this.form.value.motDePasse!,
     };
+
+    console.log('🚀 [FRONTEND] Données envoyées au backend:', data);
 
     // ====================================
     // Appeler le backend pour générer et envoyer l'OTP via Nodemailer

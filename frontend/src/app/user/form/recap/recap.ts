@@ -2,8 +2,10 @@
 import { CommonModule, DatePipe } from '@angular/common';
 import { Component, computed, inject, OnDestroy, OnInit, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
+import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { DemandeSubventionService } from '../../../services/api/demande-subvention.service';
 import { DemandeSubvention, Activite as ActiviteModel, LigneBudget, Risque as RisqueModel, PieceJointe } from '../../../types/models';
+import { PdfService } from '../../../services/pdf.service';
 import { Subscription } from 'rxjs';
 
 type SubmissionStatus = 'BROUILLON' | 'SOUMIS' | 'EN_REVUE' | 'ACCEPTE' | 'REFUSE';
@@ -52,6 +54,15 @@ interface SustainabilityStep {
   sustainability?: string;
   replicability?: string;
 }
+interface Attachment {
+  key: string;
+  label: string;
+  fileName: string;
+  fileSize: number;
+  fileType?: string;
+  base64?: string;
+  url?: string;
+}
 interface Submission {
   step1: Step1;
   step2: Step2;
@@ -62,7 +73,7 @@ interface Submission {
   budgetLines?: BudgetLine[];
   stateStep?: StateStep;
   sustainabilityStep?: SustainabilityStep;
-  attachments?: Record<string, string>;
+  attachments?: Attachment[] | Record<string, string>; // Support both formats
   status?: SubmissionStatus;
   updatedAt?: number;
 }
@@ -80,6 +91,8 @@ const DRAFT_KEYS = ['fpbg.nc.draft', 'fpbg_submission_v2']; // brouillon (selon 
 export class SubmissionRecap implements OnInit, OnDestroy {
   private route = inject(ActivatedRoute);
   private demandeService = inject(DemandeSubventionService);
+  private pdfService = inject(PdfService);
+  private sanitizer = inject(DomSanitizer);
   private subs = new Subscription();
 
   /** ===== Démo par défaut si rien dans le LS ===== */
@@ -360,7 +373,7 @@ export class SubmissionRecap implements OnInit, OnDestroy {
       contactPerson: d.soumisPar ? `${d.soumisPar.prenom || ''} ${d.soumisPar.nom || ''}`.trim() : '—',
       // Use request localisation as a fallback for geographic coverage/address
       geocouvertureGeographique: d.localisation || '—',
-      domains: '',
+      domains: (d.domaines || []).join(', ') || '—',
       address: d.localisation || '—',
       contactEmail: d.organisation?.email || d.soumisPar?.email || '—',
       contactPhone: d.organisation?.telephone || d.soumisPar?.telephone || '—',
@@ -438,11 +451,17 @@ export class SubmissionRecap implements OnInit, OnDestroy {
       });
     });
 
-    const attachments: Record<string, string> = {};
-    (d.piecesJointes || []).forEach((p: PieceJointe) => {
-      const key = p.cle || p.nomFichier || p.id;
-      attachments[key as string] = p.url || p.nomFichier || '';
-    });
+    // Transformer les pièces jointes en format Attachment[]
+    // Le backend peut stocker soit base64 (temporaire) soit url (optimisé)
+    const attachments: Attachment[] = (d.piecesJointes || []).map((p: PieceJointe) => ({
+      key: p.cle || p.nomFichier || p.id || '',
+      label: p.cle || 'Document',
+      fileName: p.nomFichier || 'document.pdf',
+      fileSize: 0, // Pas disponible depuis le backend pour l'instant
+      fileType: 'application/pdf',
+      base64: (p as any).base64 || undefined, // Si stocké temporairement en BDD
+      url: p.url || undefined, // Si stocké sur serveur de fichiers (optimisé)
+    }));
 
     // Map status from backend enum to the older SubmissionStatus
     let status: SubmissionStatus = 'SOUMIS';
@@ -503,5 +522,113 @@ export class SubmissionRecap implements OnInit, OnDestroy {
     if (!v) return '#';
     if (/^(https?:\/\/|data:|blob:)/i.test(v)) return v;
     return `/assets/uploads/${v}`;
+  }
+
+  /** ===== Gestion des PDF ===== */
+  // Signal pour le PDF sélectionné
+  selectedPdfKey = signal<string | null>(null);
+  selectedPdfUrl = signal<SafeResourceUrl | null>(null);
+  selectedPdfFileName = signal<string>('');
+
+  /**
+   * Affiche un PDF dans le visualiseur modal
+   * Supporte base64 (soumission récente) OU url (stockage optimisé)
+   */
+  showPdf(attachment: any): void {
+    if (!attachment) return;
+
+    let pdfUrl: string;
+
+    // Priorité 1 : Base64 (soumission récente, données en mémoire)
+    if (attachment.base64) {
+      pdfUrl = this.pdfService.getDataUrl(attachment.base64);
+    }
+    // Priorité 2 : URL (stockage optimisé sur serveur)
+    else if (attachment.url) {
+      pdfUrl = attachment.url;
+    }
+    else {
+      console.warn('Aucun contenu PDF disponible pour cet attachement');
+      return;
+    }
+
+    const safeUrl = this.sanitizer.bypassSecurityTrustResourceUrl(pdfUrl);
+    this.selectedPdfKey.set(attachment.key || attachment.fileName);
+    this.selectedPdfUrl.set(safeUrl);
+    this.selectedPdfFileName.set(attachment.fileName || 'document.pdf');
+  }
+
+  /**
+   * Télécharge un PDF
+   * Supporte base64 (soumission récente) OU url (stockage optimisé)
+   */
+  downloadPdf(attachment: any): void {
+    if (!attachment) return;
+
+    const link = document.createElement('a');
+
+    // Priorité 1 : Base64 (soumission récente)
+    if (attachment.base64) {
+      link.href = this.pdfService.getDataUrl(attachment.base64);
+    }
+    // Priorité 2 : URL (stockage optimisé)
+    else if (attachment.url) {
+      link.href = attachment.url;
+    }
+    else {
+      console.warn('Aucun contenu PDF disponible pour le téléchargement');
+      return;
+    }
+
+    link.download = attachment.fileName || 'document.pdf';
+    link.click();
+  }
+
+  /**
+   * Ferme le visualiseur PDF
+   */
+  closePdfViewer(): void {
+    this.selectedPdfKey.set(null);
+    this.selectedPdfUrl.set(null);
+    this.selectedPdfFileName.set('');
+  }
+
+  /**
+   * Formate la taille d'un fichier
+   */
+  formatFileSize(bytes: number): string {
+    return this.pdfService.formatFileSize(bytes);
+  }
+
+  /**
+   * Vérifie si un attachement a du contenu disponible (base64 ou URL)
+   */
+  hasPdfContent(attachment: any): boolean {
+    return !!(attachment && (attachment.base64 || attachment.url));
+  }
+
+  /**
+   * Récupère les attachments en tant que tableau
+   * Compatible avec ancien format Record<string, string> et nouveau format Attachment[]
+   */
+  getAttachmentsArray(): Attachment[] {
+    const attachments = this.submission()?.attachments;
+
+    if (!attachments) return [];
+
+    // Si c'est déjà un tableau, le retourner
+    if (Array.isArray(attachments)) {
+      return attachments;
+    }
+
+    // Sinon, convertir le Record en tableau (ancien format)
+    return Object.entries(attachments).map(([key, value]) => ({
+      key,
+      label: key,
+      fileName: value || 'document.pdf',
+      fileSize: 0,
+      fileType: 'application/pdf',
+      url: value,
+    }));
   }
 }

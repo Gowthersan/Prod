@@ -42,23 +42,24 @@ export enum TypeBudget {
 }
 
 export enum CleDocument {
+  NOTE_CONCEPTUELLE = 'NOTE_CONCEPTUELLE',
   LETTRE_MOTIVATION = 'LETTRE_MOTIVATION',
-  CV = 'CV',
-  CERTIFICAT_ENREGISTREMENT = 'CERTIFICAT_ENREGISTREMENT',
+  BUDGET_DETAILLE = 'BUDGET_DETAILLE',
+  CHRONOGRAMME = 'CHRONOGRAMME',
+  CV_RESPONSABLES = 'CV_RESPONSABLES',
+  RIB = 'RIB',
   STATUTS_REGLEMENT = 'STATUTS_REGLEMENT',
+  FICHE_CIRCUIT = 'FICHE_CIRCUIT',
+  AGREMENT = 'AGREMENT',
+  CARTOGRAPHIE = 'CARTOGRAPHIE',
+  LETTRES_SOUTIEN = 'LETTRES_SOUTIEN',
+  CERTIFICAT_ENREGISTREMENT = 'CERTIFICAT_ENREGISTREMENT',
   PV_ASSEMBLEE = 'PV_ASSEMBLEE',
   RAPPORTS_FINANCIERS = 'RAPPORTS_FINANCIERS',
   RCCM = 'RCCM',
-  AGREMENT = 'AGREMENT',
   ETATS_FINANCIERS = 'ETATS_FINANCIERS',
   DOCUMENTS_STATUTAIRES = 'DOCUMENTS_STATUTAIRES',
-  RIB = 'RIB',
-  LETTRES_SOUTIEN = 'LETTRES_SOUTIEN',
   PREUVE_NON_FAILLITE = 'PREUVE_NON_FAILLITE',
-  CARTOGRAPHIE = 'CARTOGRAPHIE',
-  FICHE_CIRCUIT = 'FICHE_CIRCUIT',
-  BUDGET_DETAILLE = 'BUDGET_DETAILLE',
-  CHRONOGRAMME = 'CHRONOGRAMME',
 }
 
 export enum StatutSoumission {
@@ -191,6 +192,7 @@ export interface DemandeSubvention {
   localisation: string;
   groupeCible: string;
   justificationContexte: string;
+  domaines?: string[]; // Conservation marine, Restauration des écosystèmes, etc.
 
   // Champs optionnels pour l'affichage
   description?: string;
@@ -483,21 +485,22 @@ export const COULEURS_STATUT_SOUMISSION: Record<StatutSoumission, string> = {
  * Labels pour les clés de documents (affichage UI)
  */
 export const LABELS_CLE_DOCUMENT: Record<CleDocument, string> = {
+  [CleDocument.NOTE_CONCEPTUELLE]: 'Note conceptuelle',
   [CleDocument.LETTRE_MOTIVATION]: 'Lettre de motivation',
-  [CleDocument.CV]: 'CV du porteur de projet',
-  [CleDocument.CERTIFICAT_ENREGISTREMENT]: 'Certificat d\'enregistrement',
-  [CleDocument.STATUTS_REGLEMENT]: 'Statuts et règlement intérieur',
-  [CleDocument.PV_ASSEMBLEE]: 'PV de l\'assemblée générale',
-  [CleDocument.RAPPORTS_FINANCIERS]: 'Rapports financiers',
-  [CleDocument.RCCM]: 'RCCM (Registre de Commerce)',
-  [CleDocument.AGREMENT]: 'Agrément',
-  [CleDocument.ETATS_FINANCIERS]: 'États financiers',
-  [CleDocument.DOCUMENTS_STATUTAIRES]: 'Documents statutaires',
-  [CleDocument.RIB]: 'RIB (Relevé d\'Identité Bancaire)',
-  [CleDocument.LETTRES_SOUTIEN]: 'Lettres de soutien',
-  [CleDocument.PREUVE_NON_FAILLITE]: 'Preuve de non-faillite',
-  [CleDocument.CARTOGRAPHIE]: 'Cartographie de la zone',
-  [CleDocument.FICHE_CIRCUIT]: 'Fiche de circuit touristique',
   [CleDocument.BUDGET_DETAILLE]: 'Budget détaillé',
   [CleDocument.CHRONOGRAMME]: 'Chronogramme des activités',
+  [CleDocument.CV_RESPONSABLES]: 'CV des responsables du projet',
+  [CleDocument.RIB]: "RIB (Relevé d'Identité Bancaire)",
+  [CleDocument.STATUTS_REGLEMENT]: 'Statuts et règlement intérieur',
+  [CleDocument.FICHE_CIRCUIT]: 'Fiche de circuit touristique',
+  [CleDocument.AGREMENT]: 'Agrément',
+  [CleDocument.CARTOGRAPHIE]: 'Cartographie de la zone',
+  [CleDocument.LETTRES_SOUTIEN]: 'Lettres de soutien',
+  [CleDocument.CERTIFICAT_ENREGISTREMENT]: "Certificat d'enregistrement",
+  [CleDocument.PV_ASSEMBLEE]: "PV de l'assemblée générale",
+  [CleDocument.RAPPORTS_FINANCIERS]: 'Rapports financiers',
+  [CleDocument.RCCM]: 'RCCM (Registre de Commerce)',
+  [CleDocument.ETATS_FINANCIERS]: 'États financiers',
+  [CleDocument.DOCUMENTS_STATUTAIRES]: 'Documents statutaires',
+  [CleDocument.PREUVE_NON_FAILLITE]: 'Preuve de non-faillite',
 };

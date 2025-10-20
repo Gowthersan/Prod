@@ -1,12 +1,12 @@
 import { CommonModule } from '@angular/common';
 import { Component, ElementRef, QueryList, ViewChildren, inject, signal } from '@angular/core';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { AuthService } from '../core/auth.service';
 
 @Component({
   selector: 'app-otp',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, RouterModule], // ✅ Ajout de RouterModule pour routerLink
   templateUrl: './otp.html',
 })
 export class Otp {

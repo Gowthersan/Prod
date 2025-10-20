@@ -1,11 +1,13 @@
 import { CommonModule } from '@angular/common';
 import { HttpClientModule } from '@angular/common/http';
 import { Component, computed, inject, OnDestroy, OnInit, signal } from '@angular/core';
+import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { ActivatedRoute, Router } from '@angular/router';
 import { take } from 'rxjs';
 import Swal from 'sweetalert2';
 import { ProjetFormDTO } from '../../model/projetFormdto';
 import { Aprojetv1 } from '../../services/aprojetv1';
+import { PdfService } from '../../services/pdf.service';
 // --- Types existants inchangés ---
 type SubmissionStatus = 'BROUILLON' | 'SOUMIS' | 'EN_REVUE' | 'ACCEPTE' | 'REFUSE';
 
@@ -53,6 +55,13 @@ interface SustainabilityStep {
   sustainability?: string;
   replicability?: string;
 }
+interface Attachment {
+  label: string;
+  fileName?: string;
+  fileSize?: number;
+  base64?: string;
+  url?: string;
+}
 interface Submission {
   step1: Step1;
   step2: Step2;
@@ -63,7 +72,7 @@ interface Submission {
   budgetLines?: BudgetLine[];
   stateStep?: StateStep;
   sustainabilityStep?: SustainabilityStep;
-  attachments?: Record<string, string>; // nom -> filename/url
+  attachments?: Record<string, string> | Attachment[]; // Support both old and new format
   status?: SubmissionStatus;
   updatedAt?: number; // timestamp
 }
@@ -79,6 +88,9 @@ export class SubmissionRecap implements OnInit, OnDestroy {
   id!: number;
   projets!: ProjetFormDTO;
   private router = inject(Router);
+  protected pdfService = inject(PdfService);
+  private sanitizer = inject(DomSanitizer);
+
   constructor(private route: ActivatedRoute) {}
   // ---------- Démo : données statiques si rien dans le localStorage ----------
   private staticDemo: Submission = {
@@ -316,6 +328,84 @@ export class SubmissionRecap implements OnInit, OnDestroy {
       title: message,
     });
   }
+
+  // --------- PDF Viewer Modal ----------
+  selectedPdfUrl = signal<SafeResourceUrl | null>(null);
+  selectedPdfFileName = signal<string>('document.pdf');
+
+  showPdf(attachment: any): void {
+    if (!attachment) return;
+
+    let pdfUrl: string;
+
+    // Priority 1: Base64 (recent submission)
+    if (attachment.base64) {
+      pdfUrl = this.pdfService.getDataUrl(attachment.base64);
+    }
+    // Priority 2: URL (optimized storage)
+    else if (attachment.url) {
+      pdfUrl = attachment.url;
+    } else {
+      console.warn('Aucun contenu PDF disponible');
+      return;
+    }
+
+    const safeUrl = this.sanitizer.bypassSecurityTrustResourceUrl(pdfUrl);
+    this.selectedPdfUrl.set(safeUrl);
+    this.selectedPdfFileName.set(attachment.fileName || 'document.pdf');
+  }
+
+  closePdfViewer(): void {
+    this.selectedPdfUrl.set(null);
+  }
+
+  downloadPdf(attachment: any): void {
+    if (!attachment) return;
+
+    let downloadUrl: string;
+    let fileName = attachment.fileName || 'document.pdf';
+
+    if (attachment.base64) {
+      downloadUrl = this.pdfService.getDataUrl(attachment.base64);
+    } else if (attachment.url) {
+      downloadUrl = attachment.url;
+    } else {
+      console.warn('Aucun contenu PDF disponible pour le téléchargement');
+      return;
+    }
+
+    const link = document.createElement('a');
+    link.href = downloadUrl;
+    link.download = fileName;
+    link.click();
+  }
+
+  getAttachmentsArray(): Attachment[] {
+    const attachments = this.submission()?.attachments;
+    if (!attachments) return [];
+
+    // If already an array, return it
+    if (Array.isArray(attachments)) {
+      return attachments;
+    }
+
+    // Otherwise, convert old Record format to new Attachment[] format
+    return Object.entries(attachments).map(([key, value]) => ({
+      label: key,
+      fileName: typeof value === 'string' ? value : value,
+      url: typeof value === 'string' ? value : undefined,
+    }));
+  }
+
+  hasPdfContent(attachment: Attachment): boolean {
+    return !!(attachment.base64 || attachment.url);
+  }
+
+  formatFileSize(bytes?: number): string {
+    if (!bytes) return '';
+    return this.pdfService.formatFileSize(bytes);
+  }
+
   redirectionUserOradmin() {
     this.id = Number(this.route.snapshot.paramMap.get('id'));
     if (this.id != 0) {

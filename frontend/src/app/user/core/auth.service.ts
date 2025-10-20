@@ -99,6 +99,8 @@ export class AuthService {
     typeSubvention: string;
     email: string;
     telephone: string;
+    prenom: string; // 🎯 Ajouté
+    nom: string; // 🎯 Ajouté
     personneContact: string;
     fonction: string;
     telephoneContact: string;
@@ -110,6 +112,8 @@ export class AuthService {
     // Préparer les données au format backend
     const payload = {
       email: data.email,
+      prenom: data.prenom, // 🎯 Ajouté
+      nom: data.nom, // 🎯 Ajouté
       personneContact: data.personneContact, // username = nom de personneContact
       motDePasse: data.motDePasse,
       nom_organisation: data.nom_organisation,
@@ -117,6 +121,7 @@ export class AuthService {
       typeSubvention: data.typeSubvention,
       telephone: data.telephone,
       telephoneContact: data.telephoneContact,
+      couvertureGeographique: data.couvertureGeographique, // 🎯 Ajouté (était manquant aussi !)
       postalAddress: data.adressePostale || null,
       adressePhysique: data.adressePhysique || null,
     };

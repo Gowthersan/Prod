@@ -1,16 +1,35 @@
 // sendMail.js
 import nodemailer from 'nodemailer';
+import type { Transporter } from 'nodemailer';
 import { acknowledgmentTemplate } from './templates/acknowledgmentTemplate';
 import { internalNotificationTemplate } from './templates/internalNotificationTemplate';
 
-export const sendMailSoumissionnaireAdmin = async (to: string, name: string, subject: string, message: string) => {
-  const transporter = nodemailer.createTransport({
-    service: 'gmail', // ou ton service SMTP
+/**
+ * Crée un transporter SMTP pour l'envoi d'emails de soumission
+ * La création est lazy (à la demande) pour s'assurer que les variables d'environnement sont chargées
+ */
+function createTransporter(): Transporter {
+  return nodemailer.createTransport({
+    service: 'gmail',
+    host: process.env.SMTP_HOST || 'mail.singcloud.ga',
+    port: parseInt(process.env.SMTP_PORT || '465'),
+    secure: true,
     auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS
-    }
+      user: process.env.SMTP_USER || 'no-reply-fpbg@singcloud.ga',
+      pass: process.env.SMTP_PASS || ''
+    },
+    tls: {
+      rejectUnauthorized: false,
+      minVersion: 'TLSv1.2'
+    },
+    authMethod: 'LOGIN',
+    debug: false,
+    logger: false
   });
+}
+
+export const sendMailSoumissionnaireAdmin = async (to: string, name: string, subject: string, message: string) => {
+  const transporter = createTransporter();
 
   // Premier mail → au client
   const clientMail = {
