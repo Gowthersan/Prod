@@ -1,10 +1,12 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import crypto from 'crypto';
 import prisma from '../config/db.js';
 import { AppError } from '../middlewares/error.middleware.js';
 import { JwtPayload, LoginVM, OrganisationDTO, UtilisateurDTO } from '../types/index.js';
 import { generateOtp } from '../utils/generateOtp.js';
 import { sendOTPEmail } from '../utils/mailer.js';
+import { sendPasswordResetEmail, sendPasswordChangedEmail } from '../utils/mail_password_reset.js';
 
 // Stockage temporaire des inscriptions en attente (en production, utilisez Redis)
 const pendingRegistrations: {
@@ -547,6 +549,124 @@ export class AuthService {
     return {
       message: 'Un nouveau code de vérification a été envoyé à votre adresse email.',
       email
+    };
+  }
+
+  /**
+   * ✅ MOT DE PASSE OUBLIÉ : Génère un token et envoie l'email
+   */
+  async forgotPassword(email: string) {
+    // ====================================
+    // 1. Vérifier si l'utilisateur existe
+    // ====================================
+    const user = await prisma.utilisateur.findUnique({
+      where: { email }
+    });
+
+    if (!user) {
+      // ⚠️ Pour la sécurité, on ne révèle pas si l'email existe ou non
+      throw new AppError('Aucun compte trouvé avec cet email.', 404);
+    }
+
+    // ====================================
+    // 2. Générer un token de réinitialisation sécurisé
+    // ====================================
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    const resetTokenHash = crypto.createHash('sha256').update(resetToken).digest('hex');
+    const resetTokenExpiry = new Date(Date.now() + 60 * 60 * 1000); // 1 heure
+
+    // ====================================
+    // 3. Sauvegarder le token dans la base de données
+    // ====================================
+    await prisma.utilisateur.update({
+      where: { id: user.id },
+      data: {
+        resetToken: resetTokenHash,
+        resetTokenExpiry
+      }
+    });
+
+    // ====================================
+    // 4. Construire le lien de réinitialisation
+    // ====================================
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:4200' || 'https://guichetnumerique.fpbg.ga/';
+    const resetLink = `${frontendUrl}/reset-password?token=${resetToken}`;
+
+    // ====================================
+    // 5. Envoyer l'email de réinitialisation
+    // ====================================
+    const userName = `${user.prenom || ''} ${user.nom || ''}`.trim() || 'Utilisateur';
+
+    try {
+      await sendPasswordResetEmail(email, userName, resetLink);
+      console.log(`✅ [FORGOT-PASSWORD] Email envoyé à ${email}`);
+    } catch (error: any) {
+      console.error(`❌ [FORGOT-PASSWORD] Erreur envoi email:`, error.message);
+      throw new AppError("Impossible d'envoyer l'email de réinitialisation", 500);
+    }
+
+    return {
+      message: 'Un email de réinitialisation a été envoyé à votre adresse.'
+    };
+  }
+
+  /**
+   * ✅ RÉINITIALISATION DU MOT DE PASSE : Vérifie le token et change le MDP
+   */
+  async resetPassword(token: string, newPassword: string) {
+    // ====================================
+    // 1. Hasher le token pour comparer avec la BDD
+    // ====================================
+    const resetTokenHash = crypto.createHash('sha256').update(token).digest('hex');
+
+    // ====================================
+    // 2. Rechercher l'utilisateur avec ce token valide
+    // ====================================
+    const user = await prisma.utilisateur.findFirst({
+      where: {
+        resetToken: resetTokenHash,
+        resetTokenExpiry: {
+          gt: new Date() // Token non expiré
+        }
+      }
+    });
+
+    if (!user) {
+      throw new AppError('Lien de réinitialisation invalide ou expiré.', 400);
+    }
+
+    // ====================================
+    // 3. Hasher le nouveau mot de passe
+    // ====================================
+    const hashedPassword = await bcrypt.hash(newPassword, 12);
+
+    // ====================================
+    // 4. Mettre à jour le mot de passe et supprimer le token
+    // ====================================
+    await prisma.utilisateur.update({
+      where: { id: user.id },
+      data: {
+        hashMotPasse: hashedPassword,
+        resetToken: null,
+        resetTokenExpiry: null
+      }
+    });
+
+    // ====================================
+    // 5. Envoyer un email de confirmation
+    // ====================================
+    const userName = `${user.prenom || ''} ${user.nom || ''}`.trim() || 'Utilisateur';
+
+    try {
+      await sendPasswordChangedEmail(user.email, userName);
+      console.log(`✅ [RESET-PASSWORD] Email de confirmation envoyé à ${user.email}`);
+    } catch (error: any) {
+      console.error(`❌ [RESET-PASSWORD] Erreur envoi email de confirmation:`, error.message);
+      // On ne fait pas échouer la réinitialisation si l'email ne part pas
+    }
+
+    return {
+      message: 'Votre mot de passe a été réinitialisé avec succès.'
     };
   }
 }

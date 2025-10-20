@@ -6,20 +6,24 @@ import nodemailer from 'nodemailer';
  * La création est lazy (à la demande) pour s'assurer que les variables d'environnement sont chargées
  */
 function createTransporter(): Transporter {
-  const emailUser = process.env.SMTP_USER;
-  const emailPass = process.env.SMTP_PASS;
-
-  if (!emailUser || !emailPass) {
-    throw new Error("SMTP_USER et SMTP_PASS doivent être définis dans les variables d'environnement");
-  }
-
-  return nodemailer.createTransport({
-    service: 'gmail',
+  const transporter = nodemailer.createTransport({
+    host: process.env.SMTP_HOST || 'mail.starget.tech',
+    port: parseInt(process.env.SMTP_PORT || '465'),
+    secure: true, // SSL/TLS pour port 465
     auth: {
-      user: emailUser,
-      pass: emailPass
-    }
+      user: process.env.SMTP_USER || 'no-reply-fpbg@singcloud.ga',
+      pass: process.env.SMTP_PASS || ''
+    },
+    tls: {
+      rejectUnauthorized: false, // Accepter les certificats auto-signés
+      minVersion: 'TLSv1.2'
+    },
+    authMethod: 'LOGIN', // Méthode d'authentification
+    debug: false, // Mets true si tu veux voir les logs SMTP détaillés
+    logger: false
   });
+
+  return transporter;
 }
 
 /**
@@ -164,7 +168,7 @@ function generateSupportEmailTemplate(name: string, email: string, phone: string
                 <tr>
                   <td align="center">
                     <a href="mailto:${email}?subject=Re: Votre demande de support"
-                       style="display: inline-block; padding: 14px 32px; background: linear-gradient(135deg, #16a34a 0%, #15803d 100%); color: #ffffff; text-decoration: none; border-radius: 10px; font-weight: 600; font-size: 14px; box-shadow: 0 4px 12px rgba(22, 163, 74, 0.3);">
+                        style="display: inline-block; padding: 14px 32px; background: linear-gradient(135deg, #16a34a 0%, #15803d 100%); color: #ffffff; text-decoration: none; border-radius: 10px; font-weight: 600; font-size: 14px; box-shadow: 0 4px 12px rgba(22, 163, 74, 0.3);">
                       Repondre au client
                     </a>
                   </td>

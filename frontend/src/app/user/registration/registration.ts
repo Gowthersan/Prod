@@ -27,6 +27,8 @@ export class Registration {
   public loading = signal(false);
   public error = signal<string | null>(null);
   public emailAlreadyUsed = signal(false);
+  public showPassword = signal(false); // ✅ Toggle pour voir le mot de passe
+  public showConfirmPassword = signal(false); // ✅ Toggle pour voir la confirmation
 
   // listes
   public type = [
@@ -78,6 +80,16 @@ export class Registration {
         }
       }
     });
+  }
+
+  // Toggle pour afficher/masquer le mot de passe
+  public togglePasswordVisibility() {
+    this.showPassword.set(!this.showPassword());
+  }
+
+  // Toggle pour afficher/masquer la confirmation du mot de passe
+  public toggleConfirmPasswordVisibility() {
+    this.showConfirmPassword.set(!this.showConfirmPassword());
   }
 
   // passage étape 1 -> 2
@@ -190,7 +202,7 @@ export class Registration {
         // Gestion des erreurs spécifiques
         if (err.status === 409) {
           this.emailAlreadyUsed.set(true);
-          this.error.set("⚠️ Cet email est déjà utilisé. Veuillez utiliser une autre adresse email ou vous connecter si vous avez déjà un compte.");
+          this.error.set('Ces identifiants sont déjà utilisés');
           // Marquer le champ email comme invalide pour le mettre en surbrillance
           this.form.controls.email.setErrors({ emailUsed: true });
           // Retourner à l'étape 1 si on est à l'étape 2
@@ -198,9 +210,9 @@ export class Registration {
             this.step.set(1);
           }
         } else if (err.status === 400) {
-          this.error.set("Données invalides. Vérifiez vos informations.");
+          this.error.set('Données invalides. Vérifiez vos informations.');
         } else {
-          this.error.set("Erreur lors de l'inscription. Veuillez réessayer.");
+          this.error.set('Ces identifiants sont deja utilisés. Veuillez réessayer.');
         }
       },
     });
@@ -208,10 +220,15 @@ export class Registration {
 }
 
 // Validation du numéro de téléphone gabonais
+// ✅ Formats acceptés :
+// - 9 chiffres commençant par 0 : 062897570
+// - +241 suivi de 9 chiffres : +241062897570
+// - 00241 suivi de 9 chiffres : 00241062897570
+// - Format avec espaces/tirets : 06 28 97 570 ou 06-28-97-570
 export function gabonPhoneValidator(): ValidatorFn {
-  const re = /^(?:0\d{8}|\+241\d{8}|00241\d{8}|0\d{2}(?:[ -]?\d{2}){3})$/;
+  const re = /^(?:0\d{8,9}|\+241\d{8,9}|00241\d{8,9}|0\d{1,2}(?:[ -]?\d{2,3}){2,3})$/;
   return (control: AbstractControl): ValidationErrors | null => {
-    const val = (control.value ?? '').toString().trim();
+    const val = (control.value ?? '').toString().trim().replace(/\s+/g, ''); // Enlever espaces
     if (!val) return null; // laisser required() gérer l'absence
     return re.test(val) ? null : { gabonPhone: { valid: false, actual: val } };
   };

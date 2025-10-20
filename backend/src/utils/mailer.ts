@@ -15,7 +15,7 @@ const __dirname = path.dirname(__filename);
  * Configuration depuis les variables d'environnement (.env)
  */
 const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST || 'mail.singcloud.ga',
+  host: process.env.SMTP_HOST || 'mail.starget.tech',
   port: parseInt(process.env.SMTP_PORT || '465'),
   secure: true, // SSL/TLS pour port 465
   auth: {
@@ -116,15 +116,7 @@ export async function sendOTPEmail(to: string, otpCode: string, userName: string
   console.log('⏰ Expiration   : 5 minutes');
   console.log('═'.repeat(60) + '\n');
 
-  // MODE DÉVELOPPEMENT : Ne pas essayer d'envoyer l'email si credentials invalides
-  const isDevelopment = process.env.NODE_ENV !== 'production';
-  if (isDevelopment) {
-    console.log('🔧 MODE DÉVELOPPEMENT - Email non envoyé (voir code OTP ci-dessus)');
-    console.log('💡 Pour envoyer de vrais emails, configurez NODE_ENV=production et vérifiez les credentials SMTP\n');
-    return; // Ne pas essayer d'envoyer
-  }
-
-  // MODE PRODUCTION : Envoyer l'email via SMTP
+  // Toujours envoyer l'email via SMTP (les credentials sont corrects maintenant)
   try {
     console.log(`📧 Tentative d'envoi d'email OTP à ${to}...`);
 

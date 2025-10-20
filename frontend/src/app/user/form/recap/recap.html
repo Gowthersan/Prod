@@ -204,7 +204,7 @@
       <article *ngIf="stepIndex() === 4" class="card">
         <h2 class="card-title">5. Risques &amp; atténuation</h2>
 
-        <div *ngIf="submission()?.risks?.length; else norisk" class="stack">
+        <div *ngIf="submission()?.risks?.length; else norisk" class="gap-4 stack">
           <div *ngFor="let r of submission()?.risks" class="row">
             <p><span class="muted">Risque :</span> {{ r.description }}</p>
             <p class="mt4"><span class="muted">Atténuation :</span> {{ r.mitigation }}</p>

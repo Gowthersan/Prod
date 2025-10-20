@@ -226,4 +226,68 @@ export class AuthController {
       next(error);
     }
   }
+
+  /**
+   * ====================================
+   * POST /api/auth/forgot-password
+   * ====================================
+   * DEMANDE DE RÉINITIALISATION : Génère un token et envoie un email
+   *
+   * Body: { email: string }
+   * Response: { message: string }
+   */
+  static async forgotPassword(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { email } = req.body;
+
+      if (!email) {
+        throw new AppError('Email requis.', 400);
+      }
+
+      console.log('🔐 [FORGOT-PASSWORD] Demande pour:', email);
+
+      const result = await authService.forgotPassword(email);
+
+      console.log('✅ [FORGOT-PASSWORD] Email envoyé à:', email);
+
+      res.status(200).json(result);
+    } catch (error) {
+      console.error('❌ [FORGOT-PASSWORD] Erreur:', error);
+      next(error);
+    }
+  }
+
+  /**
+   * ====================================
+   * POST /api/auth/reset-password
+   * ====================================
+   * RÉINITIALISATION DU MOT DE PASSE : Vérifie le token et change le MDP
+   *
+   * Body: { token: string, newPassword: string }
+   * Response: { message: string }
+   */
+  static async resetPassword(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { token, newPassword } = req.body;
+
+      if (!token || !newPassword) {
+        throw new AppError('Token et nouveau mot de passe requis.', 400);
+      }
+
+      if (newPassword.length < 6) {
+        throw new AppError('Le mot de passe doit contenir au moins 6 caractères.', 400);
+      }
+
+      console.log('🔐 [RESET-PASSWORD] Réinitialisation avec token:', token.substring(0, 20) + '...');
+
+      const result = await authService.resetPassword(token, newPassword);
+
+      console.log('✅ [RESET-PASSWORD] Mot de passe réinitialisé avec succès');
+
+      res.status(200).json(result);
+    } catch (error) {
+      console.error('❌ [RESET-PASSWORD] Erreur:', error);
+      next(error);
+    }
+  }
 }

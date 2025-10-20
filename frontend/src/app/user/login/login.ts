@@ -1,7 +1,7 @@
-import { Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { Component, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { Router, RouterLink, ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthService } from '../core/auth.service';
 
 interface LoginResponse {
@@ -27,12 +27,18 @@ export class Login {
 
   loading = signal(false);
   error = signal<string | null>(null);
+  showPassword = signal(false); // ✅ Toggle pour voir le mot de passe
 
   // Connexion par EMAIL + mot de passe uniquement
   form = this.fb.group({
     email: ['', [Validators.required, Validators.email]],
     password: ['', [Validators.required, Validators.minLength(6)]],
   });
+
+  // ✅ Toggle affichage mot de passe
+  togglePasswordVisibility() {
+    this.showPassword.set(!this.showPassword());
+  }
 
   ngOnInit() {
     // Pré-remplir si on arrive depuis OTP : /login?email=...
@@ -49,7 +55,7 @@ export class Login {
           if (p?.data?.email) this.form.controls.email.setValue(p.data.email);
           if (p?.data?.password) this.form.controls.password.setValue(p.data.password);
         }
-      } catch { }
+      } catch {}
     }
   }
 
@@ -110,7 +116,7 @@ export class Login {
         } else if (err.status === 409) {
           this.error.set('Compte non vérifié. Vérifiez votre email.');
         } else {
-          this.error.set('Erreur de connexion. Veuillez réessayer.');
+          this.error.set('Erreur de connexion. Email ou mot de passe incorrect.');
         }
       },
     });

@@ -75,4 +75,25 @@ router.get('/me', authMiddleware, AuthController.authenticate);
  */
 router.post('/refresh-token', authMiddleware, AuthController.refreshToken);
 
+// ========================================
+// ROUTES DE RÉINITIALISATION DE MOT DE PASSE
+// ========================================
+
+/**
+ * POST /api/auth/forgot-password
+ * Demande de réinitialisation de mot de passe
+ * Génère un token de réinitialisation et envoie un email
+ * Body: { email: string }
+ * Response: { message: string }
+ */
+router.post('/forgot-password', AuthController.forgotPassword);
+
+/**
+ * POST /api/auth/reset-password
+ * Réinitialisation du mot de passe avec le token
+ * Body: { token: string, newPassword: string }
+ * Response: { message: string }
+ */
+router.post('/reset-password', AuthController.resetPassword);
+
 export default router;

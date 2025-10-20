@@ -1,13 +1,13 @@
-import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { Router, RouterLink, RouterLinkActive } from '@angular/router';
-import { AuthService } from '../../core/auth.service';
-import { Authentifcationservice } from '../../services/auth/authentifcationservice';
-import { LoginVM } from '../../model/loginvm';
 import { HttpClientModule } from '@angular/common/http';
+import { Component, inject } from '@angular/core';
+import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { Router, RouterLink } from '@angular/router';
 import { take } from 'rxjs';
 import Swal from 'sweetalert2';
+import { AuthService } from '../../core/auth.service';
+import { LoginVM } from '../../model/loginvm';
+import { Authentifcationservice } from '../../services/auth/authentifcationservice';
 
 @Component({
   selector: 'app-user-login',
@@ -74,7 +74,8 @@ export class Login {
             }
 
             // ✅ Utiliser redirectTo ou déterminer en fonction du rôle
-            const targetUrl = redirectTo || (role === 'ADMINISTRATEUR' ? '/admin/dashboard' : '/dashboard');
+            const targetUrl =
+              redirectTo || (role === 'ADMINISTRATEUR' ? '/admin/dashboard' : '/login');
             console.log('🎯 Redirection vers:', targetUrl, '(Rôle:', role, ')');
 
             this.showSuccessMessage('Connexion réussie');
