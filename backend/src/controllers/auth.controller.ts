@@ -246,7 +246,16 @@ export class AuthController {
 
       console.log('🔐 [FORGOT-PASSWORD] Demande pour:', email);
 
-      const result = await authService.forgotPassword(email);
+      // Extraire l'origine de la requête pour générer le bon lien
+      const origin =
+        req.get('origin') ||
+        req.get('referer')?.split('/').slice(0, 3).join('/') ||
+        process.env.FRONTEND_URL ||
+        'https://guichetnumerique.fpbg.ga' ||
+        'http://192.168.1.99:4200';
+      console.log('🌐 [FORGOT-PASSWORD] Origin détecté:', origin);
+
+      const result = await authService.forgotPassword(email, origin);
 
       console.log('✅ [FORGOT-PASSWORD] Email envoyé à:', email);
 

@@ -42,7 +42,7 @@ import {
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { Router } from '@angular/router';
 import { debounceTime } from 'rxjs/operators';
-import { environDev } from '../../../../environments/environment.development';
+import { environment } from '../../../../environments/environment';
 import { PdfService } from '../../../services/pdf.service';
 
 /* ==============================
@@ -2212,7 +2212,7 @@ export class SubmissionWizard {
 
     // Envoi JSON simple (sans fichiers)
     this.http
-      .post(`${environDev.urlServer}/api/demandes/submit-json`, projectData, {
+      .post(`${environment.urlServer}/api/demandes/submit-json`, projectData, {
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,

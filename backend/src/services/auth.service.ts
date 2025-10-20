@@ -1,12 +1,12 @@
 import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
+import jwt from 'jsonwebtoken';
 import prisma from '../config/db.js';
 import { AppError } from '../middlewares/error.middleware.js';
 import { JwtPayload, LoginVM, OrganisationDTO, UtilisateurDTO } from '../types/index.js';
 import { generateOtp } from '../utils/generateOtp.js';
+import { sendPasswordChangedEmail, sendPasswordResetEmail } from '../utils/mail_password_reset.js';
 import { sendOTPEmail } from '../utils/mailer.js';
-import { sendPasswordResetEmail, sendPasswordChangedEmail } from '../utils/mail_password_reset.js';
 
 // Stockage temporaire des inscriptions en attente (en production, utilisez Redis)
 const pendingRegistrations: {
@@ -554,8 +554,10 @@ export class AuthService {
 
   /**
    * ✅ MOT DE PASSE OUBLIÉ : Génère un token et envoie l'email
+   * @param email - Email de l'utilisateur
+   * @param frontendOrigin - URL d'origine du frontend (détectée automatiquement depuis les headers)
    */
-  async forgotPassword(email: string) {
+  async forgotPassword(email: string, frontendOrigin?: string) {
     // ====================================
     // 1. Vérifier si l'utilisateur existe
     // ====================================
@@ -589,8 +591,14 @@ export class AuthService {
     // ====================================
     // 4. Construire le lien de réinitialisation
     // ====================================
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:4200' || 'https://guichetnumerique.fpbg.ga/';
+    // Utiliser l'origine détectée, sinon variable d'environnement, sinon URL par défaut
+    const frontendUrl =
+      frontendOrigin || process.env.FRONTEND_URL || 'https://guichetnumerique.fpbg.ga' || 'http://192.168.1.99:4200';
     const resetLink = `${frontendUrl}/reset-password?token=${resetToken}`;
+
+    console.log(`🔗 [FORGOT-PASSWORD] URL générée: ${resetLink}`);
+    console.log(`📧 [FORGOT-PASSWORD] Frontend URL utilisée: ${frontendUrl}`);
+    console.log(`🌐 [FORGOT-PASSWORD] Origin passé: ${frontendOrigin || 'non fourni'}`);
 
     // ====================================
     // 5. Envoyer l'email de réinitialisation
@@ -599,7 +607,7 @@ export class AuthService {
 
     try {
       await sendPasswordResetEmail(email, userName, resetLink);
-      console.log(`✅ [FORGOT-PASSWORD] Email envoyé à ${email}`);
+      console.log(`✅ [FORGOT-PASSWORD] Email envoyé à ${email} avec le lien de réinitialisation`);
     } catch (error: any) {
       console.error(`❌ [FORGOT-PASSWORD] Erreur envoi email:`, error.message);
       throw new AppError("Impossible d'envoyer l'email de réinitialisation", 500);
