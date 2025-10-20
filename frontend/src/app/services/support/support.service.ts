@@ -1,7 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
-import { environDev } from '../../../environments/environment.development';
+import { environment } from '../../../environments/environment';
 
 export interface SupportContactData {
   name: string;
@@ -16,10 +16,10 @@ export interface SupportResponse {
 }
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class SupportService {
-  private apiUrl = environDev.urlServer;
+  private apiUrl = environment.urlServer;
 
   constructor(private http: HttpClient) {}
 

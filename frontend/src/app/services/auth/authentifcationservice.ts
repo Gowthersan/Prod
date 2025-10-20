@@ -4,13 +4,13 @@ import { Observable } from 'rxjs';
 import { LoginVM } from '../../model/loginvm';
 import { FpbgUsersDTO } from '../../model/fpbgusersdto';
 import { OrganisationDTO } from '../../model/organisationdto';
-import { environDev } from '../../../environments/environment.development';
+import { environment } from '../../../environments/environment';
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class Authentifcationservice {
-  private ApiUrl = environDev.urlServer;
+  private ApiUrl = environment.urlServer;
   private baseUrl = '/api';
 
   constructor(private http: HttpClient) {}
@@ -22,7 +22,7 @@ export class Authentifcationservice {
   login(loginVM: LoginVM): Observable<HttpResponse<any>> {
     return this.http.post(`${this.ApiUrl}${this.baseUrl}/auth/login`, loginVM, {
       observe: 'response',
-      withCredentials: true // permet d'inclure les cookies JWT
+      withCredentials: true, // permet d'inclure les cookies JWT
     });
   }
 
@@ -32,7 +32,7 @@ export class Authentifcationservice {
   isAuthenticated(): Observable<string> {
     return this.http.get(`${this.ApiUrl}${this.baseUrl}/authenticate`, {
       responseType: 'text',
-      withCredentials: true
+      withCredentials: true,
     });
   }
 
@@ -42,7 +42,7 @@ export class Authentifcationservice {
   disconnected(): Observable<string> {
     return this.http.get(`${this.baseUrl}/disconnected`, {
       responseType: 'text',
-      withCredentials: true
+      withCredentials: true,
     });
   }
 
@@ -52,7 +52,7 @@ export class Authentifcationservice {
   registerAgentFpbg(user: FpbgUsersDTO): Observable<HttpResponse<any>> {
     return this.http.post(`${this.ApiUrl}${this.baseUrl}/registeragentfpbg`, user, {
       observe: 'response',
-      withCredentials: true
+      withCredentials: true,
     });
   }
 
@@ -62,7 +62,7 @@ export class Authentifcationservice {
   registerOrganisation(organisation: OrganisationDTO): Observable<HttpResponse<any>> {
     return this.http.post(`${this.ApiUrl}${this.baseUrl}/registerOrganisation`, organisation, {
       observe: 'response',
-      withCredentials: true
+      withCredentials: true,
     });
   }
 
@@ -71,7 +71,7 @@ export class Authentifcationservice {
    */
   verifyOtp(otp: string): Observable<boolean> {
     return this.http.get<boolean>(`${this.ApiUrl}${this.baseUrl}/otpverifcation/${otp}`, {
-      withCredentials: true
+      withCredentials: true,
     });
   }
 
@@ -79,9 +79,13 @@ export class Authentifcationservice {
    * Rafraîchit le token d’accès via cookie
    */
   refreshToken(): Observable<HttpResponse<any>> {
-    return this.http.post(`${this.ApiUrl}${this.baseUrl}/refresh-token`, {}, {
-      observe: 'response',
-      withCredentials: true
-    });
+    return this.http.post(
+      `${this.ApiUrl}${this.baseUrl}/refresh-token`,
+      {},
+      {
+        observe: 'response',
+        withCredentials: true,
+      }
+    );
   }
 }

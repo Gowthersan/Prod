@@ -6,25 +6,43 @@ import { internalNotificationTemplate } from './templates/internalNotificationTe
 
 /**
  * Crée un transporter SMTP pour l'envoi d'emails de soumission
- * La création est lazy (à la demande) pour s'assurer que les variables d'environnement sont chargées
+ * ✅ Configuration adaptée selon le type de serveur SMTP
  */
 function createTransporter(): Transporter {
+  const emailUser = process.env.SMTP_USER;
+  const emailPass = process.env.SMTP_PASS;
+  const smtpHost = process.env.SMTP_HOST;
+  const smtpPort = parseInt(process.env.SMTP_PORT || '465');
+
+  if (!emailUser || !emailPass) {
+    throw new Error(
+      "SMTP_USER et SMTP_PASS doivent être définis dans les variables d'environnement"
+    );
+  }
+
+  // Si c'est un email Gmail, utiliser service: 'gmail'
+  if (emailUser.endsWith('@gmail.com')) {
+    return nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: emailUser,
+        pass: emailPass
+      }
+    });
+  }
+
+  // Sinon, utiliser le serveur SMTP personnalisé (singcloud.ga)
   return nodemailer.createTransport({
-    service: 'gmail',
-    host: process.env.SMTP_HOST || 'mail.singcloud.ga',
-    port: parseInt(process.env.SMTP_PORT || '465'),
-    secure: true,
+    host: smtpHost,
+    port: smtpPort,
+    secure: smtpPort === 465,
     auth: {
-      user: process.env.SMTP_USER || 'no-reply-fpbg@singcloud.ga',
-      pass: process.env.SMTP_PASS || ''
+      user: emailUser,
+      pass: emailPass
     },
     tls: {
-      rejectUnauthorized: false,
-      minVersion: 'TLSv1.2'
-    },
-    authMethod: 'LOGIN',
-    debug: false,
-    logger: false
+      rejectUnauthorized: false
+    }
   });
 }
 

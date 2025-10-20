@@ -376,13 +376,23 @@ export class DemandeSubventionService {
 
             // 🎯 ACCEPTER TOUS LES PDFS - Plus de restriction sur les clés
             // Toutes les clés de documents sont acceptées maintenant
-            for (const attachment of data.attachments) {
+            for (let attachmentIndex = 0; attachmentIndex < data.attachments.length; attachmentIndex++) {
+              const attachment = data.attachments[attachmentIndex];
               try {
                 // Vérifier que l'attachement a les propriétés requises
                 if (!attachment || !attachment.key || !attachment.fileName) {
                   console.warn(`⚠️ Pièce jointe invalide, ignorée`);
                   continue;
                 }
+
+                // 🎯 Utiliser la clé du type de document directement (conforme à l'enum CleDocument)
+                const cleDocument = attachment.key as any;
+
+                // 🎯 Générer un nom de fichier UNIQUE en ajoutant l'index et un timestamp
+                // Format: FILENAME_INDEX_TIMESTAMP.ext (ex: statuts_0_1729432156789.pdf)
+                const extension = attachment.fileName.split('.').pop() || 'pdf';
+                const baseFileName = attachment.fileName.replace(/\.[^/.]+$/, ''); // Sans extension
+                const nomFichierUnique = `${baseFileName}_${attachmentIndex}_${Date.now()}.${extension}`;
 
                 // 🎯 Sauvegarder le PDF avec son contenu base64 s'il existe
                 const urlPdf = attachment.base64 ? `data:application/pdf;base64,${attachment.base64}` : '';
@@ -391,21 +401,25 @@ export class DemandeSubventionService {
                 await tx.pieceJointe.create({
                   data: {
                     idDemande: nouveleDemande.id,
-                    cle: attachment.key as any,
-                    nomFichier: attachment.fileName.trim(),
+                    cle: cleDocument, // ✅ Clé conforme à l'enum CleDocument
+                    nomFichier: nomFichierUnique, // ✅ Nom de fichier unique avec timestamp
                     typeMime: attachment.fileType || 'application/pdf',
                     tailleOctets: attachment.fileSize || 0,
-                    cleStockage: attachment.fileName, // Nom du fichier uniquement
+                    cleStockage: nomFichierUnique, // ✅ Nom du fichier unique pour le stockage
                     url: urlPdf, // 🎯 URL avec base64 pour accès direct
                     requis: attachment.required || false
                   }
                 });
 
                 fichiersCreees++;
-                console.log(`  ✅ Document "${attachment.fileName}" enregistré (${attachment.key})`);
+                console.log(`  ✅ Document "${attachment.fileName}" enregistré (type: ${cleDocument}, fichier: ${nomFichierUnique})`);
               } catch (error: any) {
-                console.error(`❌ Erreur enregistrement document ${attachment.key}:`, error.message);
-                // Continue avec les autres fichiers
+                console.error(`❌ Erreur enregistrement document ${attachment?.key}:`, error.message);
+                // ⚠️ ATTENTION: Relancer l'erreur pour arrêter la transaction
+                throw new AppError(
+                  `Erreur lors de l'enregistrement de la pièce jointe "${attachment?.fileName}": ${error.message}`,
+                  400
+                );
               }
             }
             console.log(`✅ ${fichiersCreees}/${data.attachments.length} pièce(s) jointe(s) enregistrée(s)`);
@@ -542,7 +556,7 @@ export class DemandeSubventionService {
           console.log(`💰 Montant total calculé: ${montantTotal.toLocaleString('fr-FR')} FCFA`);
 
           // Envoyer les emails (ne pas bloquer si erreur)
-          await sendProjectSubmissionEmails(demandeData);
+          await sendProjectSubmissionEmails(demandeData, demande.id);
 
           console.log('✅ Emails envoyés avec succès !');
         } catch (emailError: any) {

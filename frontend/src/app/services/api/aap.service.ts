@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
-import { environDev } from '../../../environments/environment.development';
+import { environment } from '../../../environments/environment';
 
 export interface Subvention {
   id?: string;
@@ -52,18 +52,18 @@ export interface AAP {
 }
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class AAPService {
   private http = inject(HttpClient);
-  private readonly baseUrl = `${environDev.urlServer}/api/aap`;
+  private readonly baseUrl = `${environment.urlServer}/api/aap`;
 
   /**
    * Récupérer tous les appels à projets
    */
   getAllAAPs(includeInactive: boolean = false): Observable<AAP[]> {
     return this.http.get<AAP[]>(this.baseUrl, {
-      params: { includeInactive: includeInactive.toString() }
+      params: { includeInactive: includeInactive.toString() },
     });
   }
 
@@ -85,30 +85,27 @@ export class AAPService {
    * Créer un nouvel appel à projets (admin only)
    */
   createAAP(aapData: AAP): Observable<AAP> {
-    return this.http.post<{ aap: AAP }>(this.baseUrl, aapData)
-      .pipe(
-        map(response => response.aap)
-      );
+    return this.http
+      .post<{ aap: AAP }>(this.baseUrl, aapData)
+      .pipe(map((response) => response.aap));
   }
 
   /**
    * Mettre à jour un appel à projets (admin only)
    */
   updateAAP(id: string, aapData: Partial<AAP>): Observable<AAP> {
-    return this.http.put<{ aap: AAP }>(`${this.baseUrl}/${id}`, aapData)
-      .pipe(
-        map(response => response.aap)
-      );
+    return this.http
+      .put<{ aap: AAP }>(`${this.baseUrl}/${id}`, aapData)
+      .pipe(map((response) => response.aap));
   }
 
   /**
    * Activer/Désactiver un appel à projets (admin only)
    */
   toggleAAPStatus(id: string): Observable<AAP> {
-    return this.http.patch<{ aap: AAP }>(`${this.baseUrl}/${id}/toggle`, {})
-      .pipe(
-        map(response => response.aap)
-      );
+    return this.http
+      .patch<{ aap: AAP }>(`${this.baseUrl}/${id}/toggle`, {})
+      .pipe(map((response) => response.aap));
   }
 
   /**
@@ -129,9 +126,8 @@ export class AAPService {
    * Créer un type d'organisation (admin only)
    */
   createTypeOrganisation(nom: string): Observable<any> {
-    return this.http.post<{ type: any }>(`${this.baseUrl}/types/organisations`, { nom })
-      .pipe(
-        map(response => response.type)
-      );
+    return this.http
+      .post<{ type: any }>(`${this.baseUrl}/types/organisations`, { nom })
+      .pipe(map((response) => response.type));
   }
 }

@@ -27,7 +27,7 @@
 
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
-import { ChangeDetectorRef, Component, computed, effect, inject, signal } from '@angular/core';
+import { ChangeDetectorRef, Component, computed, inject, signal } from '@angular/core';
 
 import {
   AbstractControl,
@@ -42,7 +42,7 @@ import {
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { Router } from '@angular/router';
 import { debounceTime } from 'rxjs/operators';
-import { environment } from '../../../../environments/environment';
+import { environDev } from '../../../../environments/environment.development';
 import { PdfService } from '../../../services/pdf.service';
 
 /* ==============================
@@ -333,7 +333,10 @@ export class SubmissionWizard {
     if (monthsDiff > maxMonths)
       return `❌ Durée trop longue: ${monthsDiff} mois > ${maxMonths} mois max`;
 
-    const wordCount = summaryVal.trim().split(/\s+/).filter((w: string) => w.length > 0).length;
+    const wordCount = summaryVal
+      .trim()
+      .split(/\s+/)
+      .filter((w: string) => w.length > 0).length;
     if (wordCount > 200) return `❌ Résumé trop long: ${wordCount} mots > 200 mots max`;
 
     const groups = this.activities.controls as FormGroup[];
@@ -353,7 +356,10 @@ export class SubmissionWizard {
 
       if (title.length > 50) return `❌ Activité ${i + 1}: titre trop long (${title.length} > 50)`;
 
-      const actWordCount = actSummary.trim().split(/\s+/).filter((w: string) => w.length > 0).length;
+      const actWordCount = actSummary
+        .trim()
+        .split(/\s+/)
+        .filter((w: string) => w.length > 0).length;
       if (actWordCount > 50)
         return `❌ Activité ${i + 1}: résumé trop long (${actWordCount} > 50 mots)`;
 
@@ -571,7 +577,9 @@ export class SubmissionWizard {
     const config = this.subventionConfig[type];
     this.typeSubvention.set(config.libelle);
     this.montantRange.set(
-      `${config.montantMin.toLocaleString('fr-FR')} – ${config.montantMax.toLocaleString('fr-FR')} FCFA`
+      `${config.montantMin.toLocaleString('fr-FR')} – ${config.montantMax.toLocaleString(
+        'fr-FR'
+      )} FCFA`
     );
     this.dureeMax.set(config.dureeMax);
 
@@ -879,7 +887,7 @@ export class SubmissionWizard {
     stage: this.fb.control<'CONCEPTION' | 'DEMARRAGE' | 'AVANCE' | 'PHASE_FINALE'>('DEMARRAGE', {
       validators: [Validators.required],
     }),
-    hasFunding: this.fb.control<boolean>(false, { validators: [Validators.required] }),
+    hasFunding: this.fb.control<boolean>(true, { validators: [Validators.required] }), // ✅ "Oui" par défaut
     fundingDetails: this.fb.control<string>(''), // devient requis si hasFunding = true
     honorAccepted: this.fb.control<boolean>(false), // requis si hasFunding = false (via modal)
   });
@@ -920,31 +928,41 @@ export class SubmissionWizard {
   });
 
   // ---- Étape 8 : Annexes conditionnelles selon type d'organisation ----
+  // ✅ ALIGNÉ SUR TABLEAU.md - Documents requis pour l'appel à projets FPBG
   attachments = this.fb.group({
-    // Documents communs obligatoires
-    LETTRE_MOTIVATION: new FormControl<File | null>(null, [Validators.required, fileConstraints()]),
-    CV: new FormControl<File | null>(null, [Validators.required, fileConstraints()]),
-
-    // Documents conditionnels (ajoutés selon le type d'organisation)
-    CERTIFICAT_ENREGISTREMENT: new FormControl<File | null>(null, [fileConstraints()]), // Association/ONG
-    STATUTS_REGLEMENT: new FormControl<File | null>(null, [fileConstraints()]), // Association/ONG
-    PV_ASSEMBLEE: new FormControl<File | null>(null, [fileConstraints()]), // Association/ONG
-    RAPPORTS_FINANCIERS: new FormControl<File | null>(null, [fileConstraints()]), // Association/ONG
-    RCCM: new FormControl<File | null>(null, [fileConstraints()]), // PME/PMI/Startup
-    AGREMENT: new FormControl<File | null>(null, [fileConstraints()]), // PME (si applicable)
-    ETATS_FINANCIERS: new FormControl<File | null>(null, [fileConstraints()]), // PME/PMI/Startup
-    DOCUMENTS_STATUTAIRES: new FormControl<File | null>(null, [fileConstraints()]), // Secteur public
-    RIB: new FormControl<File | null>(null, [fileConstraints()]), // Secteur public
-
-    // Documents optionnels mais encouragés
-    LETTRES_SOUTIEN: new FormControl<File | null>(null, [fileConstraints()]),
-    PREUVE_NON_FAILLITE: new FormControl<File | null>(null, [fileConstraints()]),
-
-    // Documents supplémentaires
-    CARTOGRAPHIE: new FormControl<File | null>(null, [fileConstraints()]),
-    FICHE_CIRCUIT: new FormControl<File | null>(null, [fileConstraints()]),
+    // === DOCUMENTS OBLIGATOIRES UNIVERSELS ===
+    NOTE_CONCEPTUELLE: new FormControl<File | null>(null, [fileConstraints()]),
+    LETTRE_MOTIVATION: new FormControl<File | null>(null, [fileConstraints()]),
     BUDGET_DETAILLE: new FormControl<File | null>(null, [fileConstraints()]),
     CHRONOGRAMME: new FormControl<File | null>(null, [fileConstraints()]),
+    CV_RESPONSABLES: new FormControl<File | null>(null, [fileConstraints()]),
+    RIB: new FormControl<File | null>(null, [fileConstraints()]),
+    RAPPORT_ACTIVITE: new FormControl<File | null>(null, [fileConstraints()]),
+
+    // === DOCUMENTS SPÉCIFIQUES OBLIGATOIRES ===
+    STATUTS: new FormControl<File | null>(null, [fileConstraints()]),
+    REGLEMENT_INTERIEUR: new FormControl<File | null>(null, [fileConstraints()]),
+    FICHE_CIRCUIT: new FormControl<File | null>(null, [fileConstraints()]),
+    DECRET_ARRETE_CREATION: new FormControl<File | null>(null, [fileConstraints()]),
+    RECIPISSE: new FormControl<File | null>(null, [fileConstraints()]),
+    AGREMENT: new FormControl<File | null>(null, [fileConstraints()]),
+    DECLARATION_STAT_FISCALE: new FormControl<File | null>(null, [fileConstraints()]),
+    RAPPORT_FINANCIER: new FormControl<File | null>(null, [fileConstraints()]),
+
+    // === DOCUMENTS FACULTATIFS ===
+    CARTOGRAPHIE: new FormControl<File | null>(null, [fileConstraints()]),
+    LETTRES_SOUTIEN: new FormControl<File | null>(null, [fileConstraints()]),
+
+    // === ANCIENS (pour compatibilité) ===
+    STATUTS_REGLEMENT: new FormControl<File | null>(null, [fileConstraints()]),
+    CV: new FormControl<File | null>(null, [fileConstraints()]),
+    CERTIFICAT_ENREGISTREMENT: new FormControl<File | null>(null, [fileConstraints()]),
+    PV_ASSEMBLEE: new FormControl<File | null>(null, [fileConstraints()]),
+    RAPPORTS_FINANCIERS: new FormControl<File | null>(null, [fileConstraints()]),
+    RCCM: new FormControl<File | null>(null, [fileConstraints()]),
+    ETATS_FINANCIERS: new FormControl<File | null>(null, [fileConstraints()]),
+    DOCUMENTS_STATUTAIRES: new FormControl<File | null>(null, [fileConstraints()]),
+    PREUVE_NON_FAILLITE: new FormControl<File | null>(null, [fileConstraints()]),
   });
 
   // ---- Form racine (pour autosave/récap) ----
@@ -1155,7 +1173,9 @@ export class SubmissionWizard {
    * Vérifie si les frais indirects d'une activité dépassent 10%
    */
   public activityOverheadTooHigh(activityIndex: number): boolean {
-    return this.activityIndirectCosts(activityIndex) > this.activityAllowedIndirectMax(activityIndex);
+    return (
+      this.activityIndirectCosts(activityIndex) > this.activityAllowedIndirectMax(activityIndex)
+    );
   }
 
   /**
@@ -1206,9 +1226,15 @@ export class SubmissionWizard {
   private _overheadTooHighSignal = signal(false);
 
   // Getters publics pour accéder aux signals dans le template
-  get budgetTooLowSignal() { return this._budgetTooLowSignal.asReadonly(); }
-  get budgetTooHighSignal() { return this._budgetTooHighSignal.asReadonly(); }
-  get overheadTooHighSignal() { return this._overheadTooHighSignal.asReadonly(); }
+  get budgetTooLowSignal() {
+    return this._budgetTooLowSignal.asReadonly();
+  }
+  get budgetTooHighSignal() {
+    return this._budgetTooHighSignal.asReadonly();
+  }
+  get overheadTooHighSignal() {
+    return this._overheadTooHighSignal.asReadonly();
+  }
 
   // Erreur globale si dépassement 10% ou hors tranche
   public recomputeIndirectCapGlobal(): void {
@@ -1239,56 +1265,91 @@ export class SubmissionWizard {
    * Retourne la liste des documents requis selon le type d'organisation
    */
   getRequiredDocuments(): Array<{ key: string; label: string; required: boolean }> {
+    // ✅ ALIGNÉ SUR TABLEAU.md - Documents requis pour l'appel à projets FPBG
+
     // ===== DOCUMENTS OBLIGATOIRES UNIVERSELS =====
     const universalRequired = [
-      { key: 'NOTE_CONCEPTUELLE', label: 'Formulaire de Note Conceptuelle complété', required: true },
-      { key: 'LETTRE_MOTIVATION', label: 'Lettre de motivation du porteur de projet', required: true },
+      {
+        key: 'NOTE_CONCEPTUELLE',
+        label: 'Formulaire de Note Conceptuelle complété',
+        required: true,
+      },
+      {
+        key: 'LETTRE_MOTIVATION',
+        label: 'Lettre de motivation du porteur de projet',
+        required: true,
+      },
       { key: 'BUDGET_DETAILLE', label: 'Budget détaillé du projet', required: true },
       { key: 'CHRONOGRAMME', label: "Chronogramme d'exécution", required: true },
-      { key: 'CV_RESPONSABLES', label: 'CV du porteur et des responsables techniques', required: true },
+      {
+        key: 'CV_RESPONSABLES',
+        label: 'CV du porteur et des responsables techniques',
+        required: true,
+      },
       { key: 'RIB', label: "RIB de l'organisation", required: true },
+      { key: 'RAPPORT_ACTIVITE', label: "Rapport d'activité (n-1)", required: true },
     ];
 
-    // Normaliser le type d'organisation
-    const type = this.usertype?.toLowerCase().trim() || '';
+    // Normaliser le type d'organisation (les valeurs viennent de l'enum Prisma TypeOrganisation)
+    const type = this.usertype?.toUpperCase().trim() || '';
 
     let specificDocuments: Array<{ key: string; label: string; required: boolean }> = [];
 
     // ===== DOCUMENTS SPÉCIFIQUES OBLIGATOIRES selon le type d'organisation =====
-    if (type.includes('ong') || type.includes('association') || type.includes('coopérative')) {
-      // 🏢 ONG/Associations Coopératives
+    // Correspondance exacte avec TABLEAU.md
+
+    if (type === 'ONG' || type === 'ASSOCIATION') {
+      // 🏢 ONG/Associations
       specificDocuments = [
-        { key: 'STATUTS_REGLEMENT', label: 'Statuts et règlement intérieur', required: true },
-        { key: 'FICHE_CIRCUIT', label: 'Fiche circuit (Limatriculation)', required: false }, // ❌ Non requis selon tableau
-        { key: 'AGREMENT', label: "Agrément/récépissé d'existence", required: true },
+        { key: 'STATUTS', label: 'Statuts', required: true },
+        { key: 'REGLEMENT_INTERIEUR', label: 'Règlement intérieur', required: true },
+        { key: 'RECIPISSE', label: "Récépissé d'existence juridique", required: true },
+        { key: 'AGREMENT', label: 'Agrément', required: false }, // ✅ Facultatif
+        { key: 'RAPPORT_FINANCIER', label: 'Rapport financier (n-1)', required: true },
       ];
-    } else if (type.includes('pme') || type.includes('pmi') || type.includes('startup')) {
+    } else if (type === 'COOPERATIVE') {
+      // 🏢 Coopératives
+      specificDocuments = [
+        { key: 'STATUTS', label: 'Statuts', required: true },
+        { key: 'REGLEMENT_INTERIEUR', label: 'Règlement intérieur', required: true },
+        { key: 'RECIPISSE', label: "Récépissé d'existence juridique", required: true },
+        { key: 'AGREMENT', label: 'Agrément', required: false }, // ✅ Facultatif
+        { key: 'RAPPORT_FINANCIER', label: 'Rapport financier (n-1)', required: true },
+      ];
+    } else if (type === 'PME' || type === 'PMI' || type === 'STARTUP') {
       // 💼 PME/PMI/Startups
       specificDocuments = [
-        { key: 'STATUTS_REGLEMENT', label: 'Statuts et règlement intérieur', required: true },
-        { key: 'FICHE_CIRCUIT', label: 'Fiche circuit (Limatriculation)', required: true },
-        { key: 'AGREMENT', label: "Agrément/récépissé d'existence", required: true },
+        { key: 'FICHE_CIRCUIT', label: 'Fiche circuit (immatriculation)', required: true },
+        { key: 'AGREMENT', label: 'Agrément', required: false }, // ✅ Facultatif
+        {
+          key: 'DECLARATION_STAT_FISCALE',
+          label: 'Déclaration Statistique et fiscale (n-1)',
+          required: true,
+        },
       ];
-    } else if (type.includes('entités gouvernementales') || type.includes('gouvernement')) {
-      // 🏛 Entités gouvernementales
+    } else if (type === 'SECTEUR_PUBLIC') {
+      // 🏛 Entités gouvernementales (Secteur public)
       specificDocuments = [
-        { key: 'STATUTS_REGLEMENT', label: 'Statuts et règlement intérieur', required: true },
-        { key: 'FICHE_CIRCUIT', label: 'Fiche circuit (Limatriculation)', required: false }, // Variable selon tableau
-        { key: 'AGREMENT', label: "Agrément/récépissé d'existence", required: false }, // ❌ Non requis selon tableau
+        { key: 'DECRET_ARRETE_CREATION', label: 'Décret/arrêté de création', required: true },
+        { key: 'AGREMENT', label: 'Agrément', required: false }, // ✅ Facultatif
       ];
-    } else if (type.includes('organismes de recherche') || type.includes('recherche')) {
+    } else if (type === 'RECHERCHE') {
       // 🔬 Organismes de recherche
       specificDocuments = [
-        { key: 'STATUTS_REGLEMENT', label: 'Statuts et règlement intérieur', required: true },
-        { key: 'FICHE_CIRCUIT', label: 'Fiche circuit (Limatriculation)', required: false }, // ❌ Non requis selon tableau
-        { key: 'AGREMENT', label: "Agrément/récépissé d'existence", required: true },
+        { key: 'STATUTS', label: 'Statuts', required: true },
+        { key: 'REGLEMENT_INTERIEUR', label: 'Règlement intérieur', required: true },
+        { key: 'DECRET_ARRETE_CREATION', label: 'Décret/arrêté de création', required: true },
+        { key: 'AGREMENT', label: 'Agrément', required: false }, // ✅ Facultatif
+        { key: 'RAPPORT_FINANCIER', label: 'Rapport financier (n-1)', required: true },
       ];
-    } else if (type.includes('communautés organisées') || type.includes('communaut')) {
+    } else if (type === 'COMMUNAUTE') {
       // 👥 Communautés organisées
       specificDocuments = [
-        { key: 'STATUTS_REGLEMENT', label: 'Statuts et règlement intérieur', required: true },
-        { key: 'FICHE_CIRCUIT', label: 'Fiche circuit (Limatriculation)', required: false }, // ❌ Non requis selon tableau
-        { key: 'AGREMENT', label: "Agrément/récépissé d'existence", required: true },
+        { key: 'STATUTS', label: 'Statuts', required: true },
+        { key: 'REGLEMENT_INTERIEUR', label: 'Règlement intérieur', required: true },
+        { key: 'RECIPISSE', label: "Récépissé d'existence juridique", required: true },
+        { key: 'AGREMENT', label: 'Agrément', required: false }, // ✅ Facultatif
+        { key: 'RAPPORT_FINANCIER', label: 'Rapport financier (n-1)', required: true },
       ];
     }
 
@@ -1320,9 +1381,11 @@ export class SubmissionWizard {
         const user = JSON.parse(userData);
         console.log('📋 Données utilisateur complètes:', user);
 
-        // Déterminer le type d'utilisateur
+        // Déterminer le type d'utilisateur et d'organisation
         const org = user?.organisation;
-        this.usertype = org ? 'organisation' : 'user';
+        // ✅ Utiliser le vrai type d'organisation (ONG, PME, etc.)
+        this.usertype = org?.type || 'user';
+        console.log("📋 Type d'organisation détecté:", this.usertype);
 
         // Charger le type de subvention depuis l'organisation
         if (org?.typeSubvention) {
@@ -1332,7 +1395,15 @@ export class SubmissionWizard {
 
           if (config) {
             // ✅ Utiliser setTypeSubvention() pour mettre à jour TOUS les validateurs
-            console.log('✅ Type de subvention détecté:', config.libelle, '(code:', code, ') - Durée max:', config.dureeMax, 'mois');
+            console.log(
+              '✅ Type de subvention détecté:',
+              config.libelle,
+              '(code:',
+              code,
+              ') - Durée max:',
+              config.dureeMax,
+              'mois'
+            );
             this.setTypeSubvention(code);
           } else {
             console.warn('⚠️ Aucune configuration trouvée pour le code:', code);
@@ -1467,7 +1538,7 @@ export class SubmissionWizard {
     // Validation avec le PdfService
     const validation = this.pdfService.validatePdfFile(file);
     if (!validation.valid) {
-      alert(validation.error || 'Le fichier n\'est pas valide');
+      alert(validation.error || "Le fichier n'est pas valide");
       return;
     }
 
@@ -1806,15 +1877,22 @@ export class SubmissionWizard {
 
         // ✅ Vérifier que la durée est <= durée maximale autorisée
         const monthsDiff =
-          (endD.getFullYear() - startD.getFullYear()) * 12 + (endD.getMonth() - startD.getMonth()) + 1;
+          (endD.getFullYear() - startD.getFullYear()) * 12 +
+          (endD.getMonth() - startD.getMonth()) +
+          1;
         const maxMonths = this.getMaxDuration();
         if (monthsDiff > maxMonths) {
-          console.log(`❌ [canGoNext] Étape 3 - Durée trop longue: ${monthsDiff} mois > ${maxMonths} mois`);
+          console.log(
+            `❌ [canGoNext] Étape 3 - Durée trop longue: ${monthsDiff} mois > ${maxMonths} mois`
+          );
           return false;
         }
 
         // Vérifier la limite de mots du résumé (200 mots)
-        const wordCount = summaryVal.trim().split(/\s+/).filter((w: string) => w.length > 0).length;
+        const wordCount = summaryVal
+          .trim()
+          .split(/\s+/)
+          .filter((w: string) => w.length > 0).length;
         if (wordCount > 200) {
           console.log(`❌ [canGoNext] Étape 3 - Résumé trop long: ${wordCount} mots > 200`);
           return false;
@@ -1851,14 +1929,23 @@ export class SubmissionWizard {
 
           // Vérifier la longueur du titre (max 50)
           if (title.length > 50) {
-            console.log(`❌ [canGoNext] Activité ${idx + 1} - Titre trop long: ${title.length} > 50`);
+            console.log(
+              `❌ [canGoNext] Activité ${idx + 1} - Titre trop long: ${title.length} > 50`
+            );
             return false;
           }
 
           // Vérifier la limite de mots du résumé d'activité (50 mots)
-          const actWordCount = actSummary.trim().split(/\s+/).filter((w: string) => w.length > 0).length;
+          const actWordCount = actSummary
+            .trim()
+            .split(/\s+/)
+            .filter((w: string) => w.length > 0).length;
           if (actWordCount > 50) {
-            console.log(`❌ [canGoNext] Activité ${idx + 1} - Description trop longue: ${actWordCount} > 50 mots`);
+            console.log(
+              `❌ [canGoNext] Activité ${
+                idx + 1
+              } - Description trop longue: ${actWordCount} > 50 mots`
+            );
             return false;
           }
 
@@ -1878,11 +1965,17 @@ export class SubmissionWizard {
 
           // Les dates doivent être dans la fenêtre du projet
           if (actStartD < startD) {
-            console.log(`❌ [canGoNext] Activité ${idx + 1} - Commence avant le projet (${actStart} < ${start})`);
+            console.log(
+              `❌ [canGoNext] Activité ${
+                idx + 1
+              } - Commence avant le projet (${actStart} < ${start})`
+            );
             return false;
           }
           if (actEndD > endD) {
-            console.log(`❌ [canGoNext] Activité ${idx + 1} - Finit après le projet (${actEnd} > ${end})`);
+            console.log(
+              `❌ [canGoNext] Activité ${idx + 1} - Finit après le projet (${actEnd} > ${end})`
+            );
             return false;
           }
         }
@@ -1900,7 +1993,11 @@ export class SubmissionWizard {
         const activities = this.activities.controls as FormGroup[];
         for (let i = 0; i < activities.length; i++) {
           if (this.activityOverheadTooHigh(i)) {
-            console.log(`❌ [canGoNext] Étape 4 - Activité ${i + 1} : frais indirects dépassent 10% des coûts directs`);
+            console.log(
+              `❌ [canGoNext] Étape 4 - Activité ${
+                i + 1
+              } : frais indirects dépassent 10% des coûts directs`
+            );
             return false;
           }
         }
@@ -1909,11 +2006,15 @@ export class SubmissionWizard {
         const minBudget = this.budgetMin();
         const maxBudget = this.budgetMax();
         if (totalBudget < minBudget) {
-          console.log(`❌ [canGoNext] Étape 4 - Budget trop faible: ${totalBudget} FCFA < ${minBudget} FCFA`);
+          console.log(
+            `❌ [canGoNext] Étape 4 - Budget trop faible: ${totalBudget} FCFA < ${minBudget} FCFA`
+          );
           return false;
         }
         if (totalBudget > maxBudget) {
-          console.log(`❌ [canGoNext] Étape 4 - Budget trop élevé: ${totalBudget} FCFA > ${maxBudget} FCFA`);
+          console.log(
+            `❌ [canGoNext] Étape 4 - Budget trop élevé: ${totalBudget} FCFA > ${maxBudget} FCFA`
+          );
           return false;
         }
         return this.budget.valid;
@@ -2111,7 +2212,7 @@ export class SubmissionWizard {
 
     // Envoi JSON simple (sans fichiers)
     this.http
-      .post(`${environment.urlServer}/api/demandes/submit-json`, projectData, {
+      .post(`${environDev.urlServer}/api/demandes/submit-json`, projectData, {
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
@@ -2345,7 +2446,7 @@ export class SubmissionWizard {
       <span class="inline-block px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-semibold">Guide</span>
       Annexes
     </p>
-    <p class="text-sm">Téléversez les pièces demandées (PDF/DOC/XLS/JPG/PNG). <span class="text-xs text-slate-500">Hors pagination des 5 pages.</span></p>
+    <p class="text-sm">Téléversez les pièces demandées (PDF uniquement). <span class="text-xs text-slate-500">Hors pagination des 5 pages.</span></p>
     <ol class="list-decimal ml-5 space-y-0.5 text-sm">
       <li>Lettre de motivation</li>
       <li>Statuts & règlement / Agrément / Récépissé (selon type d’organisme)</li>

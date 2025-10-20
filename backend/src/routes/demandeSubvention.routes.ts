@@ -103,7 +103,7 @@ router.post('/submit-json', authenticate, async (req, res: Response, next: NextF
 
       // Envoyer les emails de confirmation et notification avec PDFs
       console.log('📧 Envoi des emails de confirmation avec PDFs...');
-      await sendProjectSubmissionEmails(emailData);
+      await sendProjectSubmissionEmails(emailData, demande?.id!);
       console.log('✅ Emails envoyés avec succès');
     } catch (emailError: any) {
       // Log l'erreur mais ne bloque pas la soumission
@@ -161,7 +161,7 @@ router.post(
       if (!authReq.user) throw new Error('Authentification requise.');
 
       const idUtilisateur = authReq.user.userId;
-      const files = (authReq.files as unknown) as { [fieldname: string]: Express.Multer.File[] };
+      const files = authReq.files as unknown as { [fieldname: string]: Express.Multer.File[] };
 
       // Parser les données JSON du formulaire
       let projectData;
@@ -213,7 +213,7 @@ router.post(
 
         // Envoyer les emails de confirmation et notification
         console.log('📧 Envoi des emails de confirmation...');
-        await sendProjectSubmissionEmails(emailData);
+        await sendProjectSubmissionEmails(emailData, demande?.id!);
         console.log('✅ Emails envoyés avec succès');
       } catch (emailError: any) {
         // Log l'erreur mais ne bloque pas la soumission

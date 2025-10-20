@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
-import { environDev } from '../../../environments/environment.development';
+import { environment } from '../../../environments/environment';
 
 export interface Organisation {
   id?: string;
@@ -24,11 +24,11 @@ export interface Organisation {
 }
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class OrganisationService {
   private http = inject(HttpClient);
-  private readonly baseUrl = `${environDev.urlServer}/api/organisations`;
+  private readonly baseUrl = `${environment.urlServer}/api/organisations`;
 
   /**
    * Récupérer l'organisation connectée
@@ -54,11 +54,13 @@ export class OrganisationService {
   /**
    * Mettre à jour une organisation
    */
-  updateOrganisation(id: string, organisationData: Partial<Organisation>): Observable<Organisation> {
-    return this.http.put<{ organisation: Organisation }>(`${this.baseUrl}/${id}`, organisationData)
-      .pipe(
-        map(response => response.organisation)
-      );
+  updateOrganisation(
+    id: string,
+    organisationData: Partial<Organisation>
+  ): Observable<Organisation> {
+    return this.http
+      .put<{ organisation: Organisation }>(`${this.baseUrl}/${id}`, organisationData)
+      .pipe(map((response) => response.organisation));
   }
 
   /**

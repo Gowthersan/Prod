@@ -1,8 +1,8 @@
 import axios from 'axios';
-import { environDev } from '../../../environments/environment.development';
+import { environment } from '../../../environments/environment';
 
 const instance = axios.create({
-  baseURL: environDev.urlServer,
+  baseURL: environment.urlServer,
   withCredentials: true,
   headers: {
     'Content-Type': 'application/json',

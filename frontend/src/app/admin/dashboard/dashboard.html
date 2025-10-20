@@ -227,6 +227,7 @@
                       class="px-2.5 py-1.5 rounded-lg border text-sm hover:bg-amber-50 text-amber-700 border-amber-200"
                       (click)="markInReview(demande)"
                       aria-label="Mettre en revue"
+                      disabled="true"
                     >
                       En revue
                     </button>
@@ -237,6 +238,7 @@
                       class="px-2.5 py-1.5 rounded-lg bg-emerald-600 text-white text-sm hover:bg-emerald-700"
                       (click)="validate(demande)"
                       aria-label="Approuver le projet"
+                      disabled="true"
                     >
                       Approuver
                     </button>
@@ -247,6 +249,7 @@
                       class="px-2.5 py-1.5 rounded-lg border border-rose-200 text-rose-700 text-sm hover:bg-rose-50"
                       (click)="reject(demande)"
                       aria-label="Rejeter le projet"
+                      disabled="true"
                     >
                       Rejeter
                     </button>

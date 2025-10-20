@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
-import { environDev } from '../../../environments/environment.development';
+import { environment } from '../../../environments/environment';
 
 export interface Projet {
   id?: string;
@@ -44,11 +44,11 @@ export interface PaginatedResponse<T> {
 }
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class ProjetService {
   private http = inject(HttpClient);
-  private readonly baseUrl = `${environDev.urlServer}/api/aprojet-v1`;
+  private readonly baseUrl = `${environment.urlServer}/api/aprojet-v1`;
 
   /**
    * Créer un nouveau projet
@@ -57,7 +57,7 @@ export class ProjetService {
     const formData = new FormData();
 
     // Ajouter les données du projet
-    Object.keys(projetData).forEach(key => {
+    Object.keys(projetData).forEach((key) => {
       const value = (projetData as any)[key];
       if (value !== undefined && value !== null) {
         if (Array.isArray(value)) {
@@ -70,7 +70,7 @@ export class ProjetService {
 
     // Ajouter les fichiers si présents
     if (files) {
-      Object.keys(files).forEach(key => {
+      Object.keys(files).forEach((key) => {
         const fileList = files[key];
         if (Array.isArray(fileList)) {
           fileList.forEach((file: File) => {
@@ -82,18 +82,21 @@ export class ProjetService {
       });
     }
 
-    return this.http.post<{ projet: Projet }>(`${this.baseUrl}/createProjet`, formData)
-      .pipe(
-        map(response => response.projet)
-      );
+    return this.http
+      .post<{ projet: Projet }>(`${this.baseUrl}/createProjet`, formData)
+      .pipe(map((response) => response.projet));
   }
 
   /**
    * Récupérer tous les projets avec pagination
    */
-  getAllProjets(page: number = 0, size: number = 10, eagerload: boolean = false): Observable<PaginatedResponse<Projet>> {
+  getAllProjets(
+    page: number = 0,
+    size: number = 10,
+    eagerload: boolean = false
+  ): Observable<PaginatedResponse<Projet>> {
     return this.http.get<PaginatedResponse<Projet>>(this.baseUrl, {
-      params: { page: page.toString(), size: size.toString(), eagerload: eagerload.toString() }
+      params: { page: page.toString(), size: size.toString(), eagerload: eagerload.toString() },
     });
   }
 
@@ -122,20 +125,18 @@ export class ProjetService {
    * Mettre à jour un projet
    */
   updateProjet(id: string, projetData: Partial<Projet>): Observable<Projet> {
-    return this.http.put<{ projet: Projet }>(`${this.baseUrl}/${id}`, projetData)
-      .pipe(
-        map(response => response.projet)
-      );
+    return this.http
+      .put<{ projet: Projet }>(`${this.baseUrl}/${id}`, projetData)
+      .pipe(map((response) => response.projet));
   }
 
   /**
    * Mise à jour partielle d'un projet
    */
   partialUpdateProjet(id: string, projetData: Partial<Projet>): Observable<Projet> {
-    return this.http.patch<{ projet: Projet }>(`${this.baseUrl}/${id}`, projetData)
-      .pipe(
-        map(response => response.projet)
-      );
+    return this.http
+      .patch<{ projet: Projet }>(`${this.baseUrl}/${id}`, projetData)
+      .pipe(map((response) => response.projet));
   }
 
   /**
@@ -169,13 +170,16 @@ export class ProjetService {
   /**
    * Ajouter un collaborateur à un projet
    */
-  addCollaborateur(projetId: string, collaborateurData: {
-    nom: string;
-    prenom: string;
-    email: string;
-    telephone?: string;
-    role?: string;
-  }): Observable<any> {
+  addCollaborateur(
+    projetId: string,
+    collaborateurData: {
+      nom: string;
+      prenom: string;
+      email: string;
+      telephone?: string;
+      role?: string;
+    }
+  ): Observable<any> {
     return this.http.post<any>(`${this.baseUrl}/${projetId}/collaborateurs`, collaborateurData);
   }
 
@@ -183,6 +187,8 @@ export class ProjetService {
    * Supprimer un collaborateur
    */
   deleteCollaborateur(collaborateurId: string): Observable<{ message: string }> {
-    return this.http.delete<{ message: string }>(`${this.baseUrl}/collaborateurs/${collaborateurId}`);
+    return this.http.delete<{ message: string }>(
+      `${this.baseUrl}/collaborateurs/${collaborateurId}`
+    );
   }
 }

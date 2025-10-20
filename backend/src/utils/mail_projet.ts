@@ -2,54 +2,50 @@ import type { Transporter } from 'nodemailer';
 import nodemailer from 'nodemailer';
 
 /**
- * Crée un transporter SMTP pour l'envoi d'emails utilisateur (singcloud)
+ * Crée un transporter Gmail pour tous les emails
+ * ✅ Configuration simplifiée qui fonctionne (même config que pour les OTP)
  */
-function createUserTransporter(): Transporter {
-  console.log('[SMTP USER] Création du transporter pour utilisateur...');
-  console.log(`[SMTP USER] Host: ${process.env.SMTP_HOST || 'mail.singcloud.ga'}`);
-  console.log(`[SMTP USER] User: ${process.env.SMTP_USER || 'no-reply-fpbg@singcloud.ga'}\n`);
-
-  return nodemailer.createTransport({
-    service: 'gmail',
-    host: process.env.SMTP_HOST || 'mail.singcloud.ga',
-    port: parseInt(process.env.SMTP_PORT || '465'),
-    secure: true,
-    auth: {
-      user: process.env.SMTP_USER || 'no-reply-fpbg@singcloud.ga',
-      pass: process.env.SMTP_PASS || ''
-    },
-    tls: {
-      rejectUnauthorized: false,
-      minVersion: 'TLSv1.2'
-    },
-    authMethod: 'LOGIN',
-    debug: false,
-    logger: false
-  });
-}
-
-/**
- * Crée un transporter Gmail pour l'envoi d'emails au support
- */
-function createSupportTransporter(): Transporter {
-  console.log('[SMTP SUPPORT] Création du transporter Gmail pour support...');
-  console.log(`[SMTP SUPPORT] Service: Gmail`);
-  console.log(`[SMTP SUPPORT] User: ${process.env.SMTP_USER || 'NON DÉFINI'}\n`);
-
+function createEmailTransporter(): Transporter {
   const emailUser = process.env.SMTP_USER;
   const emailPass = process.env.SMTP_PASS;
+  const smtpHost = process.env.SMTP_HOST;
+  const smtpPort = parseInt(process.env.SMTP_PORT || '465');
 
   if (!emailUser || !emailPass) {
-    throw new Error(
-      "SMTP_USER et SMTP_PASS doivent être définis dans les variables d'environnement pour l'envoi au support"
-    );
+    throw new Error("SMTP_USER et SMTP_PASS doivent être définis dans les variables d'environnement");
   }
 
+  // Si c'est un email Gmail, utiliser service: 'gmail'
+  if (emailUser.endsWith('@gmail.com')) {
+    console.log('[SMTP] Création du transporter Gmail...');
+    console.log(`[SMTP] Service: Gmail`);
+    console.log(`[SMTP] User: ${emailUser}\n`);
+
+    return nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: emailUser,
+        pass: emailPass
+      }
+    });
+  }
+
+  // Sinon, utiliser le serveur SMTP personnalisé (singcloud.ga)
+  console.log('[SMTP] Création du transporter SMTP personnalisé...');
+  console.log(`[SMTP] Host: ${smtpHost}`);
+  console.log(`[SMTP] Port: ${smtpPort}`);
+  console.log(`[SMTP] User: ${emailUser}\n`);
+
   return nodemailer.createTransport({
-    service: 'gmail',
+    host: smtpHost,
+    port: smtpPort,
+    secure: smtpPort === 465, // true pour 465, false pour les autres ports
     auth: {
       user: emailUser,
       pass: emailPass
+    },
+    tls: {
+      rejectUnauthorized: false
     }
   });
 }
@@ -324,7 +320,7 @@ function generateUserConfirmationTemplate(data: DemandeData): string {
 /**
  * Template HTML pour le support - Nouvelle demande
  */
-function generateSupportNotificationTemplate(data: DemandeData): string {
+function generateSupportNotificationTemplate(data: DemandeData, demandeId: string): string {
   const currentDate = new Date().toLocaleDateString('fr-FR', {
     weekday: 'long',
     year: 'numeric',
@@ -548,7 +544,7 @@ function generateSupportNotificationTemplate(data: DemandeData): string {
                 }
               </table>
 
-              <!-- Pièces jointes PDF -->
+              <!-- Liste des documents PDF (noms uniquement - sans pièces jointes) -->
               ${
                 data.attachments && data.attachments.length > 0
                   ? `
@@ -556,43 +552,30 @@ function generateSupportNotificationTemplate(data: DemandeData): string {
                 <tr>
                   <td>
                     <h2 style="margin: 0 0 15px 0; color: #1e40af; font-size: 18px; font-weight: 600;">
-                      📎 Pièces Jointes
+                      📎 Documents soumis (${data.attachments.length})
                     </h2>
+                    <p style="margin: 0 0 15px 0; color: #64748b; font-size: 13px;">
+                      Consultez les documents directement sur la plateforme en cliquant sur le bouton ci-dessous
+                    </p>
                   </td>
                 </tr>
                 ${data.attachments
                   .map(
-                    (attachment) => `
+                    (attachment, index) => `
                 <tr>
-                  <td style="padding: 10px 0;">
-                    <table role="presentation" style="width: 100%; background-color: white; border-radius: 8px; padding: 15px; border: 1px solid #dbeafe;">
-                      <tr>
-                        <td style="width: 50px; vertical-align: middle;">
-                          <div style="width: 40px; height: 40px; background-color: #dbeafe; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 20px;">
-                            📄
-                          </div>
-                        </td>
-                        <td style="vertical-align: middle; padding-left: 15px;">
-                          <div style="color: #1e293b; font-weight: 600; font-size: 14px; margin-bottom: 4px;">
-                            ${attachment.label || 'Document'}
-                          </div>
-                          <div style="color: #64748b; font-size: 12px;">
-                            ${attachment.fileName}
-                          </div>
-                        </td>
-                        <td style="text-align: right; vertical-align: middle;">
-                          ${
-                            attachment.base64
-                              ? `<a href="data:application/pdf;base64,${attachment.base64}"
-                                   download="${attachment.fileName}"
-                                   style="display: inline-block; padding: 8px 16px; background-color: #3b82f6; color: white; text-decoration: none; border-radius: 6px; font-size: 12px; font-weight: 600;">
-                                  📥 Télécharger
-                                </a>`
-                              : `<span style="color: #64748b; font-size: 12px;">PDF joint</span>`
-                          }
-                        </td>
-                      </tr>
-                    </table>
+                  <td style="padding: 6px 0;">
+                    <div style="display: flex; align-items: center; background-color: white; border-radius: 6px; padding: 10px 15px; border: 1px solid #dbeafe;">
+                      <span style="color: #3b82f6; font-weight: 700; font-size: 14px; margin-right: 12px;">${index + 1}.</span>
+                      <div style="flex: 1;">
+                        <div style="color: #1e293b; font-weight: 600; font-size: 13px;">
+                          ${attachment.label || 'Document'}
+                        </div>
+                        <div style="color: #64748b; font-size: 11px; margin-top: 2px;">
+                          ${attachment.fileName}
+                        </div>
+                      </div>
+                      <span style="color: #10b981; font-size: 18px;">✓</span>
+                    </div>
                   </td>
                 </tr>
                 `
@@ -607,10 +590,17 @@ function generateSupportNotificationTemplate(data: DemandeData): string {
               <table role="presentation" style="width: 100%; margin-top: 30px;">
                 <tr>
                   <td align="center">
-                    <a href="https://guichetnumerique.fpbg.ga/admin/dashboard"
-                       style="display: inline-block; padding: 14px 32px; background: linear-gradient(135deg, #0f766e 0%, #115e59 100%); color: #ffffff; text-decoration: none; border-radius: 10px; font-weight: 600; font-size: 14px; box-shadow: 0 4px 12px rgba(15, 118, 110, 0.3);">
-                      🔍 Voir la demande complète
+                    <a href="https://guichetnumerique.fpbg.ga/admin/form/recap/${demandeId}"
+                       style="display: inline-block; padding: 16px 40px; background: linear-gradient(135deg, #0f766e 0%, #115e59 100%); color: #ffffff; text-decoration: none; border-radius: 10px; font-weight: 600; font-size: 15px; box-shadow: 0 4px 12px rgba(15, 118, 110, 0.3); transition: all 0.3s;">
+                      🔍 Consulter la demande et les documents
                     </a>
+                  </td>
+                </tr>
+                <tr>
+                  <td align="center" style="padding-top: 12px;">
+                    <p style="margin: 0; color: #64748b; font-size: 12px;">
+                      Cliquez pour accéder à tous les détails et télécharger les documents
+                    </p>
                   </td>
                 </tr>
               </table>
@@ -642,13 +632,14 @@ function generateSupportNotificationTemplate(data: DemandeData): string {
 /**
  * Envoie les emails de confirmation de soumission
  */
-export async function sendProjectSubmissionEmails(data: DemandeData): Promise<void> {
+export async function sendProjectSubmissionEmails(data: DemandeData, demandeId: string): Promise<void> {
   console.log('\n' + '='.repeat(80));
   console.log('[PROJECT EMAILS] ENVOI EN COURS');
   console.log('='.repeat(80));
   console.log(`Projet: ${data.titre}`);
   console.log(`Organisation: ${data.organisation.nom}`);
   console.log(`Utilisateur: ${data.soumisPar.email}`);
+  console.log(`ID Demande: ${demandeId}`);
   console.log('='.repeat(80) + '\n');
 
   const supportEmail = 'gauthier.mintsa.02@gmail.com';
@@ -680,15 +671,17 @@ export async function sendProjectSubmissionEmails(data: DemandeData): Promise<vo
   }
 
   try {
-    // 1. Email à l'utilisateur (via singcloud)
-    const userTransporter = createUserTransporter();
+    // ✅ Utiliser la même configuration simplifiée qui fonctionne pour les OTP
+    const transporter = createEmailTransporter();
+
+    // 1. Email à l'utilisateur
     console.log(`[SENDING] Envoi email de confirmation à l'utilisateur...`);
     console.log(`[DEBUG] De: ${process.env.SMTP_USER}`);
     console.log(`[DEBUG] Vers: ${data.soumisPar.email}`);
     const userHtml = generateUserConfirmationTemplate(data);
 
-    const userResult = await userTransporter.sendMail({
-      from: `"FPBG - Fonds pour la Biodiversité" <${process.env.SMTP_USER || 'no-reply-fpbg@singcloud.ga'}>`,
+    const userResult = await transporter.sendMail({
+      from: `"FPBG - Fonds pour la Biodiversité" <${process.env.SMTP_USER}>`,
       to: data.soumisPar.email,
       subject: `✅ Confirmation de soumission - ${data.titre}`,
       html: userHtml,
@@ -698,23 +691,23 @@ export async function sendProjectSubmissionEmails(data: DemandeData): Promise<vo
     console.log(`[DEBUG] MessageId: ${userResult.messageId}`);
     console.log(`[DEBUG] Response: ${userResult.response}\n`);
 
-    // 2. Email au support (via Gmail)
-    const supportTransporter = createSupportTransporter();
-    console.log(`[SENDING] Envoi notification au support via Gmail...`);
+    // 2. Email au support (SANS pièces jointes pour éviter l'antivirus)
+    console.log(`[SENDING] Envoi notification au support (sans pièces jointes)...`);
     console.log(`[DEBUG] De: ${process.env.SMTP_USER}`);
     console.log(`[DEBUG] Vers: ${supportEmail}`);
     console.log(`[DEBUG] ReplyTo: ${data.soumisPar.email}`);
-    const supportHtml = generateSupportNotificationTemplate(data);
+    console.log(`[DEBUG] Lien vers recap: https://guichetnumerique.fpbg.ga/admin/form/recap/${demandeId}`);
+    const supportHtml = generateSupportNotificationTemplate(data, demandeId);
 
-    const supportResult = await supportTransporter.sendMail({
+    const supportResult = await transporter.sendMail({
       from: `"FPBG - Notification" <${process.env.SMTP_USER}>`,
       to: supportEmail,
       replyTo: data.soumisPar.email,
       subject: `🆕 Nouvelle demande: ${data.titre} - ${data.organisation.nom}`,
-      html: supportHtml,
-      attachments: emailAttachments
+      html: supportHtml
+      // ✅ SANS pièces jointes pour éviter le blocage antivirus
     });
-    console.log('[SUCCESS] Email de notification envoyé au support via Gmail');
+    console.log('[SUCCESS] Email de notification envoyé au support (sans PDF)');
     console.log(`[DEBUG] MessageId: ${supportResult.messageId}`);
     console.log(`[DEBUG] Response: ${supportResult.response}\n`);
   } catch (error: any) {

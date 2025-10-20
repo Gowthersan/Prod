@@ -2,15 +2,15 @@ import { HttpClient, HttpResponse, HttpParams } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { ProjetFormDTO } from '../model/projetFormdto';
-import { environDev } from '../../environments/environment.development';
+import { environment } from '../../environments/environment';
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class Aprojetv1 {
   private baseUrl = 'api/aprojet-v1';
-  private ApiUrl = environDev.urlServer;
-  constructor(private http: HttpClient) { }
+  private ApiUrl = environment.urlServer;
+  constructor(private http: HttpClient) {}
 
   /**
    * Créer un projet avec fichiers (multipart/form-data)
@@ -36,14 +36,15 @@ export class Aprojetv1 {
   /**
    * Récupérer la liste paginée des projets
    */
-  getAllProjets(page: number = 0, size: number = 10, eagerload: boolean = true): Observable<HttpResponse<ProjetFormDTO[]>> {
-    let params = new HttpParams()
-      .set('page', page)
-      .set('size', size)
-      .set('eagerload', eagerload);
+  getAllProjets(
+    page: number = 0,
+    size: number = 10,
+    eagerload: boolean = true
+  ): Observable<HttpResponse<ProjetFormDTO[]>> {
+    let params = new HttpParams().set('page', page).set('size', size).set('eagerload', eagerload);
     return this.http.get<ProjetFormDTO[]>(`${this.baseUrl}`, {
       params,
-      observe: 'response'
+      observe: 'response',
     });
   }
 
@@ -73,7 +74,7 @@ export class Aprojetv1 {
    */
   downloadProjetPdf(id: number): Observable<Blob> {
     return this.http.get(`${this.ApiUrl}/${this.baseUrl}/download/${id}`, {
-      responseType: 'blob'
+      responseType: 'blob',
     });
   }
 
@@ -91,7 +92,7 @@ export class Aprojetv1 {
     const formData = new FormData();
     formData.append('file', pathFile);
     return this.http.post(`${this.ApiUrl}/${this.baseUrl}/showfile`, formData, {
-      responseType: 'blob'
+      responseType: 'blob',
     });
   }
 }

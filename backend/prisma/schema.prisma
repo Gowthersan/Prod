@@ -57,21 +57,37 @@ enum TypeBudget {
 }
 
 enum CleDocument {
-  // Renommé de DocumentKey, aligné annexes PDF
-  NOTE_CONCEPTUELLE
-  LETTRE_MOTIVATION
-  BUDGET_DETAILLE
-  CHRONOGRAMME
-  CV_RESPONSABLES
-  RIB
-  STATUTS_REGLEMENT
-  FICHE_CIRCUIT
-  AGREMENT
-  CARTOGRAPHIE
-  LETTRES_SOUTIEN
+  // Aligné sur TABLEAU.md - Documents requis pour l'appel à projets FPBG
+
+  // === DOCUMENTS OBLIGATOIRES UNIVERSELS ===
+  NOTE_CONCEPTUELLE           // Formulaire de Note Conceptuelle complété
+  LETTRE_MOTIVATION          // Lettre de motivation du porteur de projet
+  BUDGET_DETAILLE            // Budget détaillé du projet
+  CHRONOGRAMME               // Chronogramme d'exécution
+  CV_RESPONSABLES            // CV du porteur et des responsables techniques
+  RIB                        // RIB de l'organisation
+  RAPPORT_ACTIVITE           // Rapport d'activité (n-1)
+
+  // === DOCUMENTS SPÉCIFIQUES OBLIGATOIRES ===
+  STATUTS                    // Statuts (séparé du règlement intérieur)
+  REGLEMENT_INTERIEUR        // Règlement intérieur (séparé des statuts)
+  FICHE_CIRCUIT              // Fiche circuit (immatriculation) - PME/PMI/Startups uniquement
+  DECRET_ARRETE_CREATION     // Décret/arrêté de création - Entités gouv. + Recherche
+  RECIPISSE                  // Récépissé d'existence juridique (séparé de l'agrément)
+  AGREMENT                   // Agrément (séparé du récépissé)
+  DECLARATION_STAT_FISCALE   // Déclaration Statistique et fiscale (n-1) - PME/PMI/Startups
+  RAPPORT_FINANCIER          // Rapport financier (n-1)
+
+  // === DOCUMENTS FACULTATIFS ===
+  CARTOGRAPHIE               // Cartographie/localisation du projet
+  LETTRES_SOUTIEN           // Lettre de partenariat/soutien
+
+  // === ANCIENS (À garder pour compatibilité) ===
+  STATUTS_REGLEMENT         // Deprecated - remplacé par STATUTS + REGLEMENT_INTERIEUR
+  CV                        // Deprecated - remplacé par CV_RESPONSABLES
   CERTIFICAT_ENREGISTREMENT
   PV_ASSEMBLEE
-  RAPPORTS_FINANCIERS
+  RAPPORTS_FINANCIERS       // Deprecated - remplacé par RAPPORT_FINANCIER
   RCCM
   ETATS_FINANCIERS
   DOCUMENTS_STATUTAIRES
@@ -395,8 +411,8 @@ model PieceJointe {
   demande   DemandeSubvention @relation(fields: [idDemande], references: [id], onDelete: Cascade)
   idDemande String
 
-  cle          CleDocument
-  nomFichier   String
+  cle          CleDocument // Type de document selon l'enum CleDocument
+  nomFichier   String      // Nom du fichier qui contient aussi un identifiant unique
   typeMime     String
   tailleOctets Int
   cleStockage  String // Chemin sur le système de fichiers ou clé S3
@@ -407,7 +423,7 @@ model PieceJointe {
   validateur   Utilisateur? @relation("ValidateurPieceJointe", fields: [idValidateur], references: [id], onDelete: SetNull)
   idValidateur String?
 
-  @@unique([idDemande, cle])
+  @@index([idDemande])
   @@index([cle])
   @@index([idValidateur])
 }
