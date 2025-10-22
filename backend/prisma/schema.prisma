@@ -25,6 +25,7 @@ model Utilisateur {
   evaluations           Evaluation[]
   piecesJointesValidees PieceJointe[]       @relation("ValidateurPieceJointe")
   sessions              Session[]
+  surveyResponses       SurveyResponse[]
   organisation          Organisation?       @relation(fields: [idOrganisation], references: [id])
 
   @@index([idOrganisation])
@@ -315,6 +316,22 @@ model Otp {
   @@index([expireLe])
 }
 
+model SurveyResponse {
+  id               String        @id @default(cuid())
+  idUtilisateur    String
+  questionnaireKey String        @default("acquisition_channel_v1")
+  otherText        String?       @db.VarChar(255)
+  comment          String?       @db.VarChar(1000)
+  meta             Json?
+  creeLe           DateTime      @default(now())
+  misAJourLe       DateTime      @updatedAt
+  selectedKey      SurveyChannel
+  utilisateur      Utilisateur   @relation(fields: [idUtilisateur], references: [id])
+
+  @@unique([idUtilisateur, questionnaireKey])
+  @@index([idUtilisateur], map: "idx_survey_utilisateur")
+}
+
 enum Role {
   UTILISATEUR
   ADMINISTRATEUR
@@ -386,4 +403,16 @@ enum StatutSoumission {
 enum TypeSoumission {
   NOTE_CONCEPTUELLE
   PROPOSITION_COMPLETE
+}
+
+enum SurveyChannel {
+  RESEAUX_SOCIAUX
+  EMAIL
+  SITE_WEB
+  PARTENAIRE
+  BOUCHE_A_OREILLE
+  EVENEMENT
+  MOTEUR_RECHERCHE
+  AUTRE
+  CHAINE_WHATSAPP
 }

@@ -673,7 +673,7 @@ export class AuthService {
     // ====================================
     // Utiliser l'origine détectée, sinon variable d'environnement, sinon URL par défaut
     const frontendUrl =
-      frontendOrigin || process.env.FRONTEND_URL || 'https://guichetnumerique.fpbg.ga' || 'http://localhost:4200';
+      frontendOrigin || process.env.FRONTEND_URL || 'https://guichetnumerique.fpbg.ga';
     const resetLink = `${frontendUrl}/reset-password?token=${resetToken}`;
 
     console.log(`🔗 [FORGOT-PASSWORD] URL générée: ${resetLink}`);

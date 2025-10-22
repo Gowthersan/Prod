@@ -10,7 +10,7 @@ import packageInfo from '../../package.json';
 // Ce fichier est utilisé par défaut en développement
 // Pour la production, Angular utilisera automatiquement environment.prod.ts
 
-const API_DOMAIN = 'api.fpbg.singcloud.ga'; // Domaine local
+const API_DOMAIN = 'guichetnumerique.fpbg.ga'; // Domaine local
 const FRONTEND_DOMAIN = 'guichetnumerique.fpbg.ga';
 
 // Configuration locale
@@ -22,7 +22,7 @@ const API_BASE_URL = `${API_PROTOCOL}://${API_DOMAIN}${API_PORT}`;
 
 export const environment = {
   appVersion: packageInfo.version,
-  production: false,
+  production: true,
 
   // === CONFIGURATION API ===
   urlServer: API_BASE_URL,
