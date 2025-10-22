@@ -251,8 +251,7 @@ export class AuthController {
         req.get('origin') ||
         req.get('referer')?.split('/').slice(0, 3).join('/') ||
         process.env.FRONTEND_URL ||
-        'https://guichetnumerique.fpbg.ga' ||
-        'http://192.168.1.99:4200';
+        'https://guichetnumerique.fpbg.ga';
       console.log('🌐 [FORGOT-PASSWORD] Origin détecté:', origin);
 
       const result = await authService.forgotPassword(email, origin);

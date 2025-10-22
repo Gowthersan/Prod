@@ -1663,9 +1663,47 @@ export class SubmissionWizard {
   }
 
   /* ==============================
+     Méthode de nettoyage du localStorage
+     ============================== */
+  /**
+   * Nettoie complètement le localStorage lié au formulaire de soumission
+   * Utilisé pour démarrer une nouvelle soumission sur un formulaire vierge
+   */
+  clearLocalStorageDraft(): void {
+    console.log('🧹 Nettoyage du brouillon localStorage...');
+
+    // Supprimer le brouillon du formulaire
+    localStorage.removeItem(LS_DRAFT_KEY);
+
+    // Réinitialiser l'étape à 0
+    localStorage.removeItem(LS_STEP_KEY);
+
+    // Optionnel : supprimer les métadonnées du brouillon
+    localStorage.removeItem(DRAFT_META_KEY);
+
+    // Émettre un événement pour notifier le dashboard (si nécessaire)
+    window.dispatchEvent(new Event('fpbg:draft-cleared'));
+
+    console.log('✅ Brouillon localStorage nettoyé');
+  }
+
+  /**
+   * Vérifie si un brouillon existe dans le localStorage
+   */
+  hasDraft(): boolean {
+    const raw = localStorage.getItem(LS_DRAFT_KEY);
+    return raw !== null && raw.trim() !== '';
+  }
+
+  /* ==============================
      Cycle de vie / Constructor
      ============================== */
   constructor() {
+    // 🧹 IMPORTANT : Nettoyer le localStorage au démarrage
+    // Cela garantit que chaque nouvelle soumission démarre avec un formulaire vierge
+    // et évite la confusion avec d'anciennes valeurs sauvegardées d'une précédente soumission
+    this.clearLocalStorageDraft();
+
     // Charger les informations utilisateur
     this.loadUserInfo();
 
@@ -1683,62 +1721,17 @@ export class SubmissionWizard {
     // Initialiser au moins une activité
     if (this.activities.length === 0) this.addActivity();
 
-    // Restauration brouillon
-    const raw = localStorage.getItem(LS_DRAFT_KEY);
-    if (raw) {
-      try {
-        const v = JSON.parse(raw);
-
-        // Compat : ancienne liste d’activités (label/start/end/description)
-        if (Array.isArray(v.activities)) {
-          if (this.activities.length) this.activities.clear();
-          for (const a of v.activities) {
-            const gAct = this.makeActivity({
-              title: a.label ?? a.title ?? '',
-              start: a.start ?? this.today(),
-              end: a.end ?? this.today(),
-              summary: a.summary ?? a.description ?? '',
-            });
-            this.ensureActivityBudget(gAct);
-            this.activities.push(gAct);
-          }
-          // Nettoyage pour éviter de repatcher ci-dessous
-          delete v.activities;
-        }
-
-        // Compat risques
-        if (Array.isArray(v.risks)) {
-          this.risks.clear();
-          for (const r of v.risks) this.risks.push(this.makeRisk(r.description, r.mitigation));
-          delete v.risks;
-        }
-
-        // section pour la modal obligatoire
-
-        // fundingDetails requis si hasFunding = true
-        this.projectState.get('hasFunding')!.valueChanges.subscribe((v) => {
-          const fd = this.projectState.get('fundingDetails')!;
-          if (v === true) {
-            fd.addValidators([Validators.required]);
-          } else {
-            fd.removeValidators([Validators.required]);
-            fd.setValue(''); // on vide si Non
-          }
-          fd.updateValueAndValidity({ emitEvent: false });
-        });
-
-        // Compat locationAndTarget -> location/targetGroup
-        if (v.stepProp?.locationAndTarget && !v.stepProp.location && !v.stepProp.targetGroup) {
-          v.stepProp.location = v.stepProp.locationAndTarget;
-          v.stepProp.targetGroup = '';
-        }
-
-        // Patch du reste
-        this.form.patchValue(v, { emitEvent: false });
-      } catch {
-        /* ignore JSON error */
+    // Configurer la validation dynamique pour fundingDetails
+    this.projectState.get('hasFunding')!.valueChanges.subscribe((v) => {
+      const fd = this.projectState.get('fundingDetails')!;
+      if (v === true) {
+        fd.addValidators([Validators.required]);
+      } else {
+        fd.removeValidators([Validators.required]);
+        fd.setValue(''); // on vide si Non
       }
-    }
+      fd.updateValueAndValidity({ emitEvent: false });
+    });
 
     // Note: La surveillance des changements de type de subvention est gérée via effect()
     // dans le template ou manuellement quand le type change
@@ -2232,9 +2225,8 @@ export class SubmissionWizard {
             totalBudget: this.totalProject(),
           };
 
-          // Nettoyer le localStorage
-          localStorage.removeItem(LS_DRAFT_KEY);
-          localStorage.removeItem(LS_STEP_KEY);
+          // Nettoyer le localStorage (utiliser la méthode centralisée)
+          this.clearLocalStorageDraft();
 
           // Afficher la modale de succès
           this.showSuccessModal = true;
@@ -2390,19 +2382,72 @@ export class SubmissionWizard {
     <ul class="list-disc ml-5 space-y-1">
       <li>Présentez une estimation réaliste par <b>grandes rubriques</b> :
         <ul class="list-disc ml-5">
-          <li><b>Activités de terrain</b></li>
-          <li><b>Investissements</b></li>
-          <li><b>Fonctionnement</b></li>
+          <li><b>Activités de terrain</b> : Coûts directement liés à l'exécution des activités sur le terrain (missions, matériel d'intervention, main-d'œuvre terrain, etc.)</li>
+          <li><b>Investissements</b> : Acquisitions durables (équipements, infrastructures, matériel technique qui reste après le projet)</li>
+          <li><b>Fonctionnement</b> : Frais récurrents de gestion courante (bureau, communication, consommables administratifs, assurances, etc.)</li>
         </ul>
       </li>
       <li>Indiquez les <b>cofinancements</b> éventuels (organisation, communautés, bailleurs A/B), en <b>numéraire</b> ou <b>en nature</b>.</li>
       <li>Les <b>frais indirects</b> (coûts institutionnels) doivent être <b>≤ 10 %</b> du budget total.</li>
     </ul>
+
+    <hr class="my-3">
+    <h4 class="font-semibold text-blue-700 mb-2">📘 Lexique des termes budgétaires</h4>
+    <div class="bg-blue-50 border border-blue-200 rounded p-3 space-y-2 text-xs">
+      <div>
+        <span class="font-semibold text-blue-900">Cofin (Cofinanceur)</span> : Partenaire financier qui contribue au projet en complément du FPBG.
+        Peut être votre organisation, une autre ONG, un bailleur international, une collectivité locale, ou même la communauté bénéficiaire.
+      </div>
+      <div>
+        <span class="font-semibold text-blue-900">Contribution en numéraire</span> : Apport financier direct en argent (virements, espèces, chèques).
+      </div>
+      <div>
+        <span class="font-semibold text-blue-900">Contribution en nature</span> : Apport non-monétaire valorisé en argent.
+        Exemples : mise à disposition de personnel, locaux, véhicules, équipements, bénévolat communautaire, dons de matériaux.
+      </div>
+      <div>
+        <span class="font-semibold text-blue-900">Budget total (ou coût total du projet)</span> :
+        Somme de TOUTES les sources de financement : Financement FPBG demandé + Cofinancements (numéraire + nature).
+      </div>
+      <div>
+        <span class="font-semibold text-blue-900">Frais directs</span> : Coûts directement imputables aux activités du projet (salaires équipe projet, matériel, transport terrain, ateliers, etc.).
+      </div>
+      <div>
+        <span class="font-semibold text-blue-900">Frais indirects (ou coûts institutionnels)</span> :
+        Coûts de structure partagés entre plusieurs projets (direction générale, comptabilité centrale, loyer siège, électricité, téléphone général).
+        <b>Maximum 10% du budget total</b> pour le FPBG.
+      </div>
+      <div>
+        <span class="font-semibold text-blue-900">Ligne budgétaire</span> : Poste de dépense spécifique dans votre tableau (ex: "Salaire Coordinateur projet", "Location véhicule 4x4", "Achat plants forestiers").
+      </div>
+      <div>
+        <span class="font-semibold text-blue-900">Justification des coûts</span> : Explication de la méthode de calcul et des tarifs utilisés.
+        Exemples : "Devis fournisseur", "Grille salariale nationale", "Tarif marché local", "Expérience projets similaires".
+      </div>
+      <div>
+        <span class="font-semibold text-blue-900">Chronogramme financier</span> : Répartition des dépenses dans le temps (mois par mois ou trimestre par trimestre),
+        permettant de planifier les décaissements et le suivi financier.
+      </div>
+    </div>
+
     <hr class="my-3">
     <h4 class="font-semibold text-emerald-700 mb-1">Conseils pratiques</h4>
     <ul class="list-disc ml-5 space-y-1">
-      <li>Restez synthétique ici ; gardez le détail en annexe “Budget détaillé”.</li>
+      <li>Restez synthétique ici ; gardez le détail en annexe "Budget détaillé".</li>
       <li>Assurez la cohérence <b>Activités ↔ Budget</b> et justifiez les montants clés.</li>
+      <li><b>Détaillez les cofinancements</b> : pour chaque cofinanceur, précisez le nom, le montant, le type (numéraire/nature) et le statut (confirmé/en attente/potentiel).</li>
+      <li><b>Valorisez correctement les contributions en nature</b> : utilisez des tarifs réalistes et documentés (ex: tarif horaire du bénévolat selon grille nationale).</li>
+      <li><b>Exemple de structure de budget détaillé</b> :
+        <ul class="list-disc ml-5 text-xs">
+          <li>Colonne 1 : Ligne budgétaire (description précise)</li>
+          <li>Colonne 2 : Unité (jour, mois, unité, forfait, etc.)</li>
+          <li>Colonne 3 : Quantité</li>
+          <li>Colonne 4 : Coût unitaire (FCFA)</li>
+          <li>Colonne 5 : Total ligne (FCFA)</li>
+          <li>Colonne 6 : Source de financement (FPBG / Cofin A / Cofin B / Organisation)</li>
+          <li>Colonne 7 : Justification / Référence</li>
+        </ul>
+      </li>
     </ul>
     `,
 

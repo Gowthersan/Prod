@@ -4,11 +4,50 @@
 
 import packageInfo from '../../package.json';
 
+// ========================================
+// CONFIGURATION PAR DÉFAUT (DEV/LOCAL)
+// ========================================
+// Ce fichier est utilisé par défaut en développement
+// Pour la production, Angular utilisera automatiquement environment.prod.ts
+
+const API_DOMAIN = 'api.fpbg.singcloud.ga'; // Domaine local
+const FRONTEND_DOMAIN = 'guichetnumerique.fpbg.ga';
+
+// Configuration locale
+const API_PROTOCOL = 'https';
+const API_PORT = ':4000'; // Port du backend local
+
+// Construction automatique des URLs
+const API_BASE_URL = `${API_PROTOCOL}://${API_DOMAIN}${API_PORT}`;
+
 export const environment = {
   appVersion: packageInfo.version,
-  production: true,
-  // urlServer: 'https://api.fpbg.singcloud.ga',
-  urlServer: 'http://192.168.1.99:4000',
+  production: false,
+
+  // === CONFIGURATION API ===
+  urlServer: API_BASE_URL,
+  apiBaseUrl: `${API_BASE_URL}/api`,
+
+  // === DOMAINES ===
+  domains: {
+    api: API_DOMAIN,
+    frontend: FRONTEND_DOMAIN,
+  },
+
+  // === AJOUTS pour le sondage ===
+  activerSondagePostOtp: true,
+  cleQuestionnaireSondage: 'acquisition_channel_v1',
+
+  // === LIENS OFFICIELS ===
+  liens: {
+    siteOfficiel: 'https://fpbg.org/',
+    whatsappChannel: 'https://whatsapp.com/channel/0029Vb6tduQK0IBibg4ui80B',
+    facebook: 'https://www.facebook.com/profile.php?id=61572016092621',
+    twitter: 'https://x.com/FPBG_Gabon',
+    linkedin: 'https://www.linkedin.com/company/106050434/',
+    instagram: 'https://instagram.com/fpbg.gabon',
+    youtube: 'https://youtube.com/@fpbg-gabon',
+  },
 };
 
 /*

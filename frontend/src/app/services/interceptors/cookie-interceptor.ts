@@ -17,12 +17,14 @@ export class CookieInterceptor implements HttpInterceptor {
   private router = inject(Router);
 
   intercept(req: HttpRequest<any>, next: HttpHandler): Observable<HttpEvent<any>> {
-    // ✅ Obtenir le token d'authentification depuis plusieurs sources
-    let token = this.auth.token();
+    // ✅ TOUJOURS lire le token DIRECTEMENT depuis localStorage
+    // pour garantir qu'on utilise le token le plus récent
+    // (évite les problèmes de synchronisation avec les signals Angular)
+    const token = localStorage.getItem('token') || localStorage.getItem('fpbg.token') || null;
 
-    // Si pas de token dans le service, essayer localStorage
-    if (!token) {
-      token = localStorage.getItem('token') || localStorage.getItem('fpbg.token') || null;
+    // Debug: Afficher un extrait du token utilisé (seulement en dev)
+    if (token && req.url.includes('/api/sondage')) {
+      console.log('🔑 [Interceptor] Token utilisé pour', req.url, ':', token.substring(0, 30) + '...');
     }
 
     // Cloner la requête et ajouter les headers nécessaires
@@ -37,6 +39,8 @@ export class CookieInterceptor implements HttpInterceptor {
           'Authorization': `Bearer ${token}`
         }
       });
+    } else {
+      console.warn('⚠️ [Interceptor] Aucun token disponible pour', req.url);
     }
 
     return next.handle(clonedRequest).pipe(

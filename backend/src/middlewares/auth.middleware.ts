@@ -85,19 +85,26 @@ const JWT_SECRET = process.env.JWT_SECRET!;
 
 export const authenticate: RequestHandler = async (req, res, next) => {
   try {
+    console.log('[authenticate] === DÉBUT ===');
+    console.log('[authenticate] Path:', req.path);
+
     // 1. Récupérer le token depuis les headers
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      console.error('[authenticate] ❌ ERREUR: Aucun token fourni ou format invalide');
       return res.status(401).json({ message: 'Aucun token fourni ou format invalide.' });
     }
 
     const token = authHeader.split(' ')[1];
+    console.log('[authenticate] Token extrait:', token.substring(0, 20) + '...');
 
     // 2. Vérifier et décoder le token JWT
     const decoded = jwt.verify(token!, JWT_SECRET) as unknown as { userId: string; role?: string };
+    console.log('[authenticate] Token décodé:', decoded);
 
     // Validation runtime pour userId
     if (!decoded.userId) {
+      console.error('[authenticate] ❌ ERREUR: userId manquant dans le token');
       return res.status(401).json({ message: 'Token invalide : userId manquant.' });
     }
 
@@ -105,8 +112,10 @@ export const authenticate: RequestHandler = async (req, res, next) => {
     const utilisateur = await prisma.utilisateur.findUnique({
       where: { id: decoded.userId }
     });
+    console.log('[authenticate] Utilisateur trouvé:', utilisateur ? `${utilisateur.email} (${utilisateur.id})` : 'NULL');
 
     if (!utilisateur || !utilisateur.actif) {
+      console.error('[authenticate] ❌ ERREUR: Utilisateur non trouvé ou inactif');
       return res.status(401).json({ message: 'Utilisateur non trouvé ou inactif.' });
     }
 
@@ -129,10 +138,12 @@ export const authenticate: RequestHandler = async (req, res, next) => {
       role: role,
       email: utilisateur.email
     };
+    console.log('[authenticate] ✅ Authentification réussie - user ajouté à req:', (req as AuthRequest).user);
 
     // 6. Passer au prochain middleware/route
     next();
   } catch (error) {
+    console.error('[authenticate] ❌ ERREUR exception:', error);
     if (error instanceof jwt.JsonWebTokenError) {
       return res.status(401).json({ message: 'Token invalide ou expiré.' });
     }

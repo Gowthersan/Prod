@@ -4,6 +4,7 @@ import { NavigationEnd, Router, RouterLink } from '@angular/router';
 import { filter } from 'rxjs/operators';
 import { FormsModule } from '@angular/forms';
 import { SupportService, SupportContactData } from '../../services/support/support.service';
+import { environment } from '../../../environments/environment';
 
 type Appel = {
   id: string;
@@ -23,6 +24,9 @@ export class Home {
   private router = inject(Router);
   private elRef = inject(ElementRef<HTMLElement>);
   private supportService = inject(SupportService);
+
+  // --- Liens officiels depuis environment ---
+  liens = environment.liens;
 
   // --- État UI ---
   isMobileMenuOpen = signal(false);

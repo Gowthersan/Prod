@@ -86,7 +86,7 @@ export class Login {
           targetUrl = '/admin/dashboard';
         } else if (response?.type === 'organisation') {
           // Organisation → dashboard utilisateur
-          targetUrl = '/dashboard';
+          targetUrl = '/admin/dashboard';
         } else {
           // Utilisateur simple → dashboard utilisateur
           targetUrl = '/dashboard';

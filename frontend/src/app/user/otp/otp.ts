@@ -2,18 +2,27 @@ import { CommonModule } from '@angular/common';
 import { Component, ElementRef, QueryList, ViewChildren, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { AuthService } from '../core/auth.service';
+import { environment } from '../../../environments/environment';
+import { SondageApi, CanalSondage, CorpsCreationSondage } from '../api/sondage.api';
+import { FenetreSondageComponent } from '../ui/fenetre-sondage/fenetre-sondage.component';
 
 @Component({
   selector: 'app-otp',
   standalone: true,
-  imports: [CommonModule, RouterModule], // ✅ Ajout de RouterModule pour routerLink
+  imports: [CommonModule, RouterModule, FenetreSondageComponent], // ✅ Ajout du composant de sondage
   templateUrl: './otp.html',
 })
 export class Otp {
   private router = inject(Router);
   private route = inject(ActivatedRoute);
   private auth = inject(AuthService);
+  private sondageApi = inject(SondageApi);
 
+  redirectApresSondage = '/soumission'; // URL de redirection après le sondage
+
+  afficherSondage = signal(false);
+  envoiSondage = signal(false);
+  verificationEnCours = signal(false); // 🔄 État de chargement pour le bouton OTP
   @ViewChildren('otpInput') inputs!: QueryList<ElementRef<HTMLInputElement>>;
 
   email = signal<string>('');
@@ -51,7 +60,7 @@ export class Otp {
   resend() {
     const p = this._getPending();
     if (!p) {
-      this.error.set('Session expirée. Veuillez recommencer l\'inscription.');
+      this.error.set("Session expirée. Veuillez recommencer l'inscription.");
       this.success.set(null);
       return;
     }
@@ -79,7 +88,7 @@ export class Otp {
         console.error('❌ Erreur resend:', err);
         const msg = err.message || '';
         if (msg.includes('Aucune inscription') || msg.includes('en attente')) {
-          this.error.set('Session expirée. Veuillez recommencer l\'inscription.');
+          this.error.set("Session expirée. Veuillez recommencer l'inscription.");
         } else {
           this.error.set('Erreur lors du renvoi du code. Veuillez réessayer.');
         }
@@ -101,6 +110,16 @@ export class Otp {
     }
 
     this.error.set(null);
+    this.verificationEnCours.set(true); // 🔄 Démarrer l'animation
+
+    // ====================================
+    // 🔥 CRITIQUE : Nettoyer TOUS les anciens tokens AVANT la vérification OTP
+    // pour s'assurer qu'aucun ancien token ne traîne
+    // ====================================
+    console.log('🧹 [verify] Nettoyage de tous les anciens tokens...');
+    localStorage.removeItem('token');
+    localStorage.removeItem('fpbg.token');
+    console.log('✅ [verify] Tokens nettoyés, prêt pour la vérification OTP');
 
     // ====================================
     // Vérifier l'OTP via le backend
@@ -108,35 +127,67 @@ export class Otp {
     this.auth.verifyOtp(p.email, code).subscribe({
       next: (response: any) => {
         console.log('✅ OTP vérifié, compte créé - Réponse complète:', response);
-        console.log('🔍 Token:', response?.token ? 'présent' : 'absent');
+        console.log(
+          '🔍 Token reçu:',
+          response?.token ? response.token.substring(0, 30) + '...' : 'absent'
+        );
         console.log('🔍 redirectTo:', response?.redirectTo);
+
+        // ====================================
+        // 🔥 CRITIQUE : S'assurer que le NOUVEAU token est bien stocké
+        // et remplace complètement l'ancien avant toute autre action
+        // ====================================
+        if (response?.token) {
+          console.log('🔄 [verify] Mise à jour forcée du token dans localStorage...');
+          console.log('🔍 [verify] Token complet reçu du backend:', response.token);
+          localStorage.setItem('token', response.token);
+          localStorage.setItem('fpbg.token', response.token);
+
+          // Vérifier que le token est bien stocké
+          const stored = localStorage.getItem('token');
+          console.log('✅ [verify] Token stocké - Vérification:', stored?.substring(0, 30) + '...');
+          console.log('🔍 [verify] Token match?', stored === response.token ? 'OUI ✅' : 'NON ❌');
+        } else {
+          console.error('❌ [verify] ERREUR: Aucun token reçu du backend!');
+        }
 
         // Nettoyer le localStorage
         localStorage.removeItem('fpbg.pendingReg');
-        localStorage.removeItem('onboarding_done'); // Supprimer ce flag obsolète
+        localStorage.removeItem('onboarding_done');
 
         // ====================================
-        // 🎯 Le token est déjà stocké par auth.service.verifyOtp()
-        // 🎯 Redirection vers /soumission (par défaut)
+        // 🎯 Arrêter l'animation de vérification
+        // ====================================
+        this.verificationEnCours.set(false);
+
+        // ====================================
+        // 🎯 Décider : Sondage ou Redirection directe
         // ====================================
         const redirectUrl = response?.redirectTo || '/soumission';
-        console.log(`🎯 Redirection vers: ${redirectUrl}`);
+        const doitAfficherSondage = !!response?.exigerSondage;
+        console.log(`🎯 Configuration sondage:`);
+        console.log(`   - environment.activerSondagePostOtp: ${environment.activerSondagePostOtp}`);
+        console.log(`   - doitAfficherSondage (backend): ${doitAfficherSondage}`);
+        console.log(`   - redirectUrl: ${redirectUrl}`);
 
-        // Petit délai pour s'assurer que le token est bien stocké
+        // Donner un peu de temps pour que le DOM se mette à jour
         setTimeout(() => {
-          this.router.navigate([redirectUrl]).then((success) => {
-            if (success) {
-              console.log('✅ Navigation réussie vers', redirectUrl);
-            } else {
-              console.error('❌ Échec de la navigation vers', redirectUrl);
-              // Fallback : essayer /dashboard
-              this.router.navigate(['/dashboard']);
-            }
-          });
-        }, 100);
+          if (environment.activerSondagePostOtp && doitAfficherSondage) {
+            console.log('✅ Affichage du sondage ACTIVÉ');
+            this.redirectApresSondage = redirectUrl;
+            this.afficherSondage.set(true);
+            console.log('🔍 Signal afficherSondage:', this.afficherSondage());
+          } else {
+            console.log('⏭️ Redirection directe vers:', redirectUrl);
+            this.router.navigate([redirectUrl]).then((success) => {
+              if (!success) this.router.navigate(['/dashboard']);
+            });
+          }
+        }, 300);
       },
       error: (err) => {
         console.error('❌ Erreur verify OTP:', err);
+        this.verificationEnCours.set(false); // 🔄 Arrêter l'animation
         const msg = err.message || '';
         if (msg.includes('invalide') || msg.includes('INVALID')) {
           this.error.set('Code OTP invalide.');
@@ -175,5 +226,100 @@ export class Otp {
       }
       this.counter.update((v) => v - 1);
     }, 1000);
+  }
+
+  // Vérifie si le sondage est requis, l’affiche si besoin, puis redirige.
+  private _workflowSondageOuRedirection(redirectUrl: string) {
+    if (!environment.activerSondagePostOtp) {
+      this._naviguerVers(redirectUrl);
+      return;
+    }
+    const cle = environment.cleQuestionnaireSondage;
+
+    this.sondageApi.verifierSiDejaRepondu(cle).subscribe({
+      next: () => this._naviguerVers(redirectUrl),
+      error: (err) => {
+        console.log('[sondage GET] statut=', err?.status);
+        if (err?.status === 404) {
+          this.afficherSondage.set(true);
+        } else if (err?.status === 401) {
+          // 🔁  retry unique (le temps que le token soit bien lisible)
+          setTimeout(() => {
+            this.sondageApi.verifierSiDejaRepondu(cle).subscribe({
+              next: () => this._naviguerVers(redirectUrl),
+              error: (err2) => {
+                console.log('[sondage GET retry] statut=', err2?.status);
+                if (err2?.status === 404) this.afficherSondage.set(true);
+                else this._naviguerVers(redirectUrl);
+              },
+            });
+          }, 200);
+        } else {
+          this._naviguerVers(redirectUrl);
+        }
+      },
+    });
+  }
+
+  // Appelée par la modale (événement (valider))
+  validerSondage(e: { choixSelectionne: CanalSondage; texteAutre?: string; commentaire?: string }) {
+    // 🔥 DEBUG : Vérifier quel token sera utilisé
+    const tokenDansLS = localStorage.getItem('token') || localStorage.getItem('fpbg.token');
+    console.log(
+      '🔍 [validerSondage] Token dans localStorage:',
+      tokenDansLS?.substring(0, 30) + '...'
+    );
+    console.log('🔍 [validerSondage] Données du sondage:', e);
+
+    const corps: CorpsCreationSondage = {
+      cleQuestionnaire: environment.cleQuestionnaireSondage,
+      choixSelectionne: e.choixSelectionne,
+      texteAutre: e.texteAutre,
+      commentaire: e.commentaire,
+      meta: this._construireMeta(),
+    };
+
+    console.log('📤 [validerSondage] Envoi vers API avec corps:', corps);
+    this.envoiSondage.set(true);
+
+    this.sondageApi.enregistrerReponse(corps).subscribe({
+      next: (response) => {
+        console.log('✅ [validerSondage] Succès:', response);
+        this.afficherSondage.set(false);
+        this.envoiSondage.set(false);
+        this._naviguerVers(this.redirectApresSondage);
+      },
+      error: (err) => {
+        console.error('❌ [validerSondage] Erreur:', err);
+        console.error('❌ [validerSondage] Status:', err.status);
+        console.error('❌ [validerSondage] Message:', err.message);
+        // On redirige quand même pour ne pas bloquer l'utilisateur
+        this.afficherSondage.set(false);
+        this.envoiSondage.set(false);
+        this._naviguerVers(this.redirectApresSondage);
+      },
+    });
+  }
+
+  // Navigation sûre avec fallback (réutilise ton comportement actuel)
+  private _naviguerVers(url: string) {
+    this.router.navigate([url]).then((ok) => {
+      if (!ok) this.router.navigate(['/dashboard']);
+    });
+  }
+
+  // Construire les métadonnées pour le sondage
+  private _construireMeta(): Record<string, any> | null {
+    try {
+      return {
+        userAgent: navigator.userAgent,
+        language: navigator.language,
+        timestamp: new Date().toISOString(),
+        screenResolution: `${window.screen.width}x${window.screen.height}`,
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
+      };
+    } catch {
+      return null;
+    }
   }
 }

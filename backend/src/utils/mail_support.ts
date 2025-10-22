@@ -214,7 +214,7 @@ export interface SupportContactData {
  */
 export async function sendSupportEmail(
   data: SupportContactData,
-  supportEmail: string = 'morelmintsa@outlook.fr'
+  supportEmail: string = 'association.pivot40@sing.ga'
 ): Promise<void> {
   console.log('\n' + '='.repeat(80));
   console.log('[SUPPORT EMAIL] ENVOI EN COURS');

@@ -210,6 +210,41 @@ export class AuthService {
         // ====================================
         // 4a. UTILISATEUR : Créer le compte utilisateur
         // ====================================
+
+        // 🔥 ÉTAPE PRÉALABLE : Vérifier si l'utilisateur existe déjà
+        let existingUser = await prisma.utilisateur.findUnique({
+          where: { email: registrationData.email }
+        });
+
+        if (existingUser) {
+          console.log('⚠️ [INSCRIPTION USER] Utilisateur existe déjà - Connexion au lieu de création:', {
+            id: existingUser.id,
+            email: existingUser.email
+          });
+
+          // Supprimer les données temporaires
+          delete pendingRegistrations[email];
+
+          // Générer un nouveau token avec le bon userId
+          const token = this.generateToken({
+            userId: existingUser.id,
+            email: existingUser.email,
+            userType: 'user'
+          });
+
+          const { hashMotPasse: _, ...userWithoutPassword } = existingUser;
+
+          return {
+            message: 'Connexion réussie !',
+            token,
+            user: userWithoutPassword,
+            type: 'user',
+            redirectTo: '/soumission',
+            exigerSondage: true
+          };
+        }
+
+        // Si l'utilisateur n'existe pas, le créer normalement
         const user = await prisma.utilisateur.create({
           data: {
             email: registrationData.email,
@@ -243,12 +278,56 @@ export class AuthService {
           token,
           user: userWithoutPassword,
           type: 'user',
-          redirectTo: '/soumission' // 🎯 Redirection vers soumission
+          redirectTo: '/soumission', // 🎯 Redirection vers soumission
+          exigerSondage: true // 🎯 Activer le sondage pour les nouveaux utilisateurs
         };
       } else {
         // ====================================
         // 4b. ORGANISATION : Créer User → Organisation → TypeOrganisation
         // ====================================
+
+        // 🔥 ÉTAPE PRÉALABLE : Vérifier si l'utilisateur existe déjà
+        let existingUser = await prisma.utilisateur.findUnique({
+          where: { email: registrationData.email },
+          include: {
+            organisation: {
+              include: { typeSubvention: true }
+            }
+          }
+        });
+
+        if (existingUser) {
+          console.log('⚠️ [INSCRIPTION ORG] Utilisateur existe déjà - Connexion au lieu de création:', {
+            id: existingUser.id,
+            email: existingUser.email
+          });
+
+          // Supprimer les données temporaires
+          delete pendingRegistrations[email];
+
+          // Générer un nouveau token avec le bon userId
+          const token = this.generateToken({
+            userId: existingUser.id,
+            email: existingUser.email,
+            userType: 'organisation'
+          });
+
+          const { hashMotPasse: _, ...userWithoutPassword } = existingUser;
+
+          return {
+            message: 'Connexion réussie !',
+            token,
+            user: {
+              ...userWithoutPassword,
+              organisation: existingUser.organisation ? serializeBigInt(existingUser.organisation) : null
+            },
+            type: 'organisation',
+            redirectTo: '/soumission',
+            exigerSondage: true
+          };
+        }
+
+        // Si l'utilisateur n'existe pas, le créer normalement
         const result = await prisma.$transaction(async (tx) => {
           // ÉTAPE 1: Créer l'Utilisateur en premier
           console.log('📝 [INSCRIPTION ORG] Données reçues:', {
@@ -371,7 +450,8 @@ export class AuthService {
             organisation: serializeBigInt(result.organisation) // 🎯 Sérialiser les BigInt
           },
           type: 'organisation',
-          redirectTo: '/soumission' // 🎯 Redirection vers soumission
+          redirectTo: '/soumission', // 🎯 Redirection vers soumission
+          exigerSondage: true // 🎯 Activer le sondage pour les nouvelles organisations
         };
       }
     } catch (error: any) {
@@ -593,7 +673,7 @@ export class AuthService {
     // ====================================
     // Utiliser l'origine détectée, sinon variable d'environnement, sinon URL par défaut
     const frontendUrl =
-      frontendOrigin || process.env.FRONTEND_URL || 'https://guichetnumerique.fpbg.ga' || 'http://192.168.1.99:4200';
+      frontendOrigin || process.env.FRONTEND_URL || 'https://guichetnumerique.fpbg.ga' || 'http://localhost:4200';
     const resetLink = `${frontendUrl}/reset-password?token=${resetToken}`;
 
     console.log(`🔗 [FORGOT-PASSWORD] URL générée: ${resetLink}`);

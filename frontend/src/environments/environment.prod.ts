@@ -1,20 +1,25 @@
 import packageInfo from '../../package.json';
 
 // ========================================
-// CONFIGURATION DEVELOPMENT
+// CONFIGURATION PRODUCTION
 // ========================================
+// Pour déployer en production, il suffit de modifier ces 2 valeurs :
+// 1. API_DOMAIN : Le domaine de votre API backend
+// 2. FRONTEND_DOMAIN : Le domaine de votre frontend (optionnel)
 
-const API_DOMAIN = 'localhost';
-const FRONTEND_DOMAIN = 'localhost';
+const API_DOMAIN = 'api.fpbg.singcloud.ga'; // MODIFIEZ ICI pour votre domaine API
+const FRONTEND_DOMAIN = 'fpbg.singcloud.ga';   // MODIFIEZ ICI pour votre domaine frontend (si différent)
 
-const API_PROTOCOL = 'http';
-const API_PORT = ':4000';
+// Le reste se configure automatiquement
+const API_PROTOCOL = 'https'; // http ou https
+const API_PORT = ''; // Laisser vide si pas de port spécifique, ou ':4000' par exemple
 
+// Construction automatique des URLs
 const API_BASE_URL = `${API_PROTOCOL}://${API_DOMAIN}${API_PORT}`;
 
-export const environDev = {
+export const environment = {
   appVersion: packageInfo.version,
-  production: false,
+  production: true,
 
   // === CONFIGURATION API ===
   urlServer: API_BASE_URL,

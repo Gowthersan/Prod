@@ -7,6 +7,24 @@
 
 Plateforme web de gestion des appels à projets pour la conservation marine et littorale au Gabon. Ce système permet aux organisations locales de soumettre leurs projets, de suivre leur progression et d'accéder aux ressources de financement pour la préservation de la biodiversité.
 
+---
+
+## 🚀 Guides de Déploiement
+
+**Nouveau !** Configuration simplifiée des domaines pour le déploiement :
+
+- **[⚡ Quick Start](QUICK_START.md)** - Démarrage ultra-rapide (2 minutes) - **COMMENCEZ ICI !**
+- **[📖 Guide Complet](DEPLOYMENT_GUIDE.md)** - Documentation complète avec exemples et checklist
+- **[🎨 Frontend](frontend/DEPLOYMENT.md)** - Configuration détaillée du frontend Angular
+- **[⚙️ Backend](backend/DEPLOYMENT.md)** - Configuration détaillée de l'API Node.js
+- **[💻 VS Code Setup](VSCODE_SETUP.md)** - Configuration VS Code et résolution des erreurs TypeScript
+
+💡 **Pour déployer en production**, modifiez seulement **2 fichiers** :
+1. `frontend/src/environments/environment.prod.ts` (2 lignes)
+2. `backend/.env` (3 lignes)
+
+---
+
 ## 📋 Table des matières
 
 - [Vue d'ensemble](#-vue-densemble)

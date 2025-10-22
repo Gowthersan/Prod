@@ -11,6 +11,7 @@ import authRoutes from './routes/auth.routes.js';
 import demandeSubventionRoutes from './routes/demandeSubvention.routes.js';
 import organisationRoutes from './routes/organisation.routes.js';
 // import projetRoutes from './routes/projet.routes.js';
+import sondageRoutes from './routes/sondage.routes.js';
 import supportRoutes from './routes/support.routes.js';
 import { verifyEmailConfig } from './utils/mailer.js';
 
@@ -28,11 +29,14 @@ const __dirname = path.dirname(__filename);
 /* -------------------------------------------------------------------------- */
 
 const allowedOrigins = [
-  'http://localhost:4000', // Dev local
+  'http://localhost:4200', // Dev local frontend
+  'http://localhost:4000', // Dev local backend
+  'http://172.20.10.2:4200',
+  'http://172.20.10.2:4000',
   'https://guichetnumerique.fpbg.ga',
-  'http://192.168.1.99:4000', // Frontend production
-  process.env.FRONT_URL,
-  'http://192.168.1.99:4200' // Valeur configurable via .env
+  'https://api.fpbg.singcloud.ga', // Production
+  process.env.FRONTEND_URL, // Valeur configurable via .env
+  process.env.FRONT_URL
 ].filter(Boolean); // Supprime les valeurs undefined
 
 app.use(
@@ -113,6 +117,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/organisations', organisationRoutes);
 app.use('/api/aap', aapRoutes);
 app.use('/api/demandes', demandeSubventionRoutes);
+app.use('/api/sondage', sondageRoutes);
 app.use('/api/support', supportRoutes);
 
 /* -------------------------------------------------------------------------- */

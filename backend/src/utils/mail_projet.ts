@@ -1,5 +1,6 @@
 import type { Transporter } from 'nodemailer';
 import nodemailer from 'nodemailer';
+import { environment } from '../config/environment';
 
 /**
  * Crée un transporter Gmail pour tous les emails
@@ -109,7 +110,7 @@ function generateUserConfirmationTemplate(data: DemandeData, demandeId: string):
 
   const montantFormate = data.montantTotal.toLocaleString('fr-FR');
   const nomComplet = `${data.soumisPar.prenom || ''} ${data.soumisPar.nom || ''}`.trim();
-  const platformUrl = `https://guichetnumerique.fpbg.ga/form/recap/${demandeId}`;
+  const platformUrl = `${environment.domains.frontend}/form/recap/${demandeId}`;
 
   return `
 <!DOCTYPE html>
@@ -213,7 +214,7 @@ function generateUserConfirmationTemplate(data: DemandeData, demandeId: string):
                           Montant total:
                         </td>
                         <td style="color: #16a34a; font-size: 16px; font-weight: 700;">
-                          ${montantFormate} FCFA
+                          ${data.montantTotal} FCFA
                         </td>
                       </tr>
                     </table>
@@ -352,7 +353,7 @@ function generateSupportNotificationTemplate(data: DemandeData, demandeId: strin
 
   const montantFormate = data.montantTotal.toLocaleString('fr-FR');
   const nomComplet = `${data.soumisPar.prenom || ''} ${data.soumisPar.nom || ''}`.trim();
-  const platformUrl = `https://guichetnumerique.fpbg.ga/admin/form/recap/${demandeId}`;
+  const platformUrl = `${environment.domains.frontend}/admin/form/recap/${demandeId}`;
 
   return `
 <!DOCTYPE html>
@@ -676,7 +677,7 @@ export async function sendProjectSubmissionEmails(data: DemandeData, demandeId: 
   console.log(`Utilisateur: ${data.soumisPar.email}`);
   console.log(`ID Demande: ${demandeId}`);
   console.log(`Documents: ${data.attachments?.length || 0} fichier(s)`);
-  console.log(`URL Plateforme: https://guichetnumerique.fpbg.ga/admin/form/recap/${demandeId}`);
+  console.log(`URL Plateforme: ${environment.domains.frontend}/admin/form/recap/${demandeId}`);
   console.log('='.repeat(80) + '\n');
 
   const supportEmail = 'gauthier.mintsa.02@gmail.com';
@@ -747,7 +748,7 @@ export async function sendProjectSubmissionEmails(data: DemandeData, demandeId: 
     console.log('✅ SUCCÈS TOTAL - 2 emails envoyés sans pièce jointe');
     console.log(`   - Email utilisateur: ${data.soumisPar.email}`);
     console.log(`   - Email support: ${supportEmail}`);
-    console.log(`   - Documents accessibles via: https://guichetnumerique.fpbg.ga/admin/form/recap/${demandeId}`);
+    console.log(`   - Documents accessibles via: ${environment.domains.frontend}/admin/form/recap/${demandeId}`);
     console.log('━'.repeat(80) + '\n');
   } catch (error: any) {
     console.error('\n' + '━'.repeat(80));

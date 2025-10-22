@@ -22,6 +22,9 @@
     "typeCheckHostBindings": true,
     "strictTemplates": true
   },
+  "exclude": [
+    "../backend/**/*"
+  ],
   "files": [],
   "references": [
     {
