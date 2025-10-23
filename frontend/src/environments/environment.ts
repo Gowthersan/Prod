@@ -10,11 +10,14 @@ import packageInfo from '../../package.json';
 // Ce fichier est utilisé par défaut en développement
 // Pour la production, Angular utilisera automatiquement environment.prod.ts
 
-const API_DOMAIN = 'guichetnumerique.fpbg.ga'; // Domaine local
-const FRONTEND_DOMAIN = 'guichetnumerique.fpbg.ga';
+// const API_DOMAIN = 'guichetnumerique.fpbg.ga'; // Domaine local
+// const FRONTEND_DOMAIN = 'guichetnumerique.fpbg.ga';
+
+const API_DOMAIN = 'localhost'; // Domaine local
+const FRONTEND_DOMAIN = 'localhost';
 
 // Configuration locale
-const API_PROTOCOL = 'https';
+const API_PROTOCOL = 'http';
 const API_PORT = ':4000'; // Port du backend local
 
 // Construction automatique des URLs

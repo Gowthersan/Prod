@@ -2,10 +2,11 @@
 
 ![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)
 ![Angular](https://img.shields.io/badge/Angular-20.3-red.svg)
+![Node.js](https://img.shields.io/badge/Node.js-TypeScript-green.svg)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 
-Plateforme web de gestion des appels à projets pour la conservation marine et littorale au Gabon. Ce système permet aux organisations locales de soumettre leurs projets, de suivre leur progression et d'accéder aux ressources de financement pour la préservation de la biodiversité.
+Plateforme web complète de gestion des appels à projets et de subventions pour la conservation marine et littorale au Gabon. Ce système permet aux organisations locales de soumettre leurs demandes de subvention, de suivre leur progression et d'accéder aux ressources de financement pour la préservation de la biodiversité.
 
 ---
 
@@ -13,15 +14,13 @@ Plateforme web de gestion des appels à projets pour la conservation marine et l
 
 **Nouveau !** Configuration simplifiée des domaines pour le déploiement :
 
-- **[⚡ Quick Start](QUICK_START.md)** - Démarrage ultra-rapide (2 minutes) - **COMMENCEZ ICI !**
-- **[📖 Guide Complet](DEPLOYMENT_GUIDE.md)** - Documentation complète avec exemples et checklist
-- **[🎨 Frontend](frontend/DEPLOYMENT.md)** - Configuration détaillée du frontend Angular
-- **[⚙️ Backend](backend/DEPLOYMENT.md)** - Configuration détaillée de l'API Node.js
-- **[💻 VS Code Setup](VSCODE_SETUP.md)** - Configuration VS Code et résolution des erreurs TypeScript
+- **[📖 Guide Complet de Déploiement](DEPLOYMENT_GUIDE.md)** - Documentation complète avec exemples et checklist
+- **[🎨 Frontend Angular](frontend/DEPLOYMENT.md)** - Configuration détaillée du frontend
+- **[⚙️ Backend Node.js](backend/DEPLOYMENT.md)** - Configuration détaillée de l'API
 
 💡 **Pour déployer en production**, modifiez seulement **2 fichiers** :
 1. `frontend/src/environments/environment.prod.ts` (2 lignes)
-2. `backend/.env` (3 lignes)
+2. `backend/.env` (4 lignes principales)
 
 ---
 
@@ -37,82 +36,106 @@ Plateforme web de gestion des appels à projets pour la conservation marine et l
 - [Développement](#-développement)
 - [Structure du projet](#-structure-du-projet)
 - [API & Backend](#-api--backend)
+- [Base de données](#-base-de-données)
 - [Déploiement](#-déploiement)
+- [Sécurité](#-sécurité)
 - [Tests](#-tests)
 - [Contribution](#-contribution)
 - [Licence](#-licence)
 
 ## 🎯 Vue d'ensemble
 
-Le FPBG (Fonds de Préservation de la Biodiversité au Gabon) est une organisation internationale à but non lucratif dédiée à la conservation marine et littorale. Cette plateforme digitale facilite :
+Le FPBG (Fonds de Préservation de la Biodiversité au Gabon) est une organisation internationale à but non lucratif dédiée à la conservation marine et littorale. Cette plateforme digitale complète facilite :
 
-- **Gestion des appels à projets** : Publication et suivi des appels à projets de conservation
-- **Soumission de projets** : Interface intuitive pour soumettre des propositions de projets
-- **Évaluation et suivi** : Workflow complet d'évaluation et de validation des projets
-- **Communication** : Support WhatsApp chatbot et formulaires de contact
-- **Reporting** : Tableaux de bord pour les administrateurs et porteurs de projets
+- **Gestion des appels à projets** : Publication, configuration et suivi des appels à projets
+- **Soumission de demandes de subvention** : Interface intuitive avec wizard multi-étapes
+- **Évaluation et validation** : Workflow complet d'évaluation par les administrateurs
+- **Gestion des organisations** : Enregistrement et suivi des organisations participantes
+- **Communication** : Système de notifications par email et support
+- **Reporting** : Tableaux de bord et génération de rapports PDF
+- **Sondage d'acquisition** : Collecte de données sur les canaux de découverte
 
-### 🎨 Captures d'écran
+### 🎨 Fonctionnalités Visuelles
 
 La plateforme propose un design moderne avec :
 
 - Page d'accueil attractive avec hero section
-- Processus de soumission en 4 étapes
+- Processus de soumission en plusieurs étapes
 - Section partenaires (FPBG & Obligations Bleues)
-- Promotion de l'application mobile (en développement)
 - FAQ avec support WhatsApp
 - Tableaux de bord administrateurs et utilisateurs
+- Génération de PDF pour les demandes
 
 ## ✨ Fonctionnalités
 
 ### 🌐 Espace Public
 
 - **Page d'accueil** : Présentation du programme, statistiques, appels actifs
-- **Liste des appels à projets** : Consultation des opportunités de financement
-- **Détails des appels** : Critères d'éligibilité, montants, dates limites
-- **FAQ & Support** : Chatbot WhatsApp pour réponses instantanées
-- **Promotion app mobile** : Présentation des fonctionnalités de l'application mobile à venir
+- **Liste des appels à projets** : Consultation des opportunités de financement en cours
+- **Détails des appels** : Critères d'éligibilité, montants, dates limites, thématiques
+- **FAQ & Support** : Formulaire de contact et support
 
 ### 👤 Espace Utilisateur
 
-- **Authentification sécurisée** : Inscription, connexion, OTP par email
-- **Dashboard personnalisé** : Vue d'ensemble des projets soumis
-- **Formulaire de soumission** : Wizard multi-étapes pour soumettre un projet
-  - Étape 1 : Informations de l'organisation
-  - Étape 2 : Description du projet
-  - Étape 3 : Budget et calendrier
-  - Étape 4 : Documents justificatifs
-- **Suivi de projets** : Statut en temps réel (brouillon, soumis, en évaluation, approuvé, rejeté)
-- **Notifications** : Alertes sur les changements de statut
-- **Profil** : Gestion des informations personnelles
+#### Authentification Complète
+- **Inscription organisation** : Formulaire détaillé avec validation OTP par email
+- **Connexion sécurisée** : JWT avec cookies httpOnly
+- **Réinitialisation mot de passe** : Système complet forgot/reset password avec tokens
+- **Validation OTP** : Code à 6 chiffres envoyé par email (valide 5 minutes)
+- **Sondage post-inscription** : Collecte du canal d'acquisition utilisateur
+
+#### Gestion des Demandes de Subvention
+- **Dashboard personnalisé** : Vue d'ensemble des demandes soumises avec statuts
+- **Formulaire de soumission multi-étapes** :
+  - **Informations projet** : Titre, localisation, groupe cible, objectifs, durée
+  - **Contexte et justification** : Description détaillée du projet
+  - **Activités** : Planning détaillé avec sous-activités
+  - **Budget** : Lignes budgétaires avec répartition FPBG/cofinancement
+  - **Risques et mitigation** : Identification et gestion des risques
+  - **Documents justificatifs** : Upload de pièces jointes requises
+- **Types de soumission** : Note conceptuelle ou proposition complète
+- **Statuts des demandes** :
+  - BROUILLON : En cours de rédaction
+  - SOUMIS : Envoyé pour évaluation
+  - EN_REVUE : En cours d'évaluation
+  - APPROUVE : Demande acceptée
+  - REJETE : Demande refusée
+- **Récapitulatif et export PDF** : Visualisation complète avant soumission
+- **Notifications email** : Accusé de réception et notifications internes
 
 ### 🔐 Espace Administrateur
 
-- **Dashboard admin** : Statistiques globales, projets en attente
-- **Gestion des appels** : Création, modification, publication d'appels à projets
+- **Dashboard admin** : Statistiques globales (nombre de demandes par statut)
+- **Gestion des demandes** : Liste, filtre et évaluation des demandes de subvention
+- **Gestion des appels à projets** :
+  - Création d'appels avec dates de début/fin
+  - Configuration des types de subvention (montants min/max, durée)
+  - Gestion des thématiques par appel
+  - Association d'organisations aux appels
+- **Gestion des organisations** : CRUD complet des organisations
 - **Évaluation de projets** : Système de notation et commentaires
-- **Gestion des utilisateurs** : CRUD complet, activation/désactivation de comptes
-- **Exports & Rapports** : Génération de rapports CSV/PDF
-- **Modération** : Validation des soumissions
+- **Exports & Rapports** : Génération de rapports et exports
+- **Récapitulatifs détaillés** : Vue complète de chaque demande avec toutes les données
 
 ## 🏗️ Architecture
 
-### Frontend (Angular)
+### Architecture Globale
 
 ```
 ┌─────────────────────────────────────────┐
-│           Angular Frontend              │
+│      Angular Frontend (Port 4200)      │
 │  ┌──────────────────────────────────┐   │
 │  │  Components                       │   │
-│  │  - User (Dashboard, Forms)        │   │
+│  │  - User (Dashboard, Forms, OTP)   │   │
 │  │  - Admin (Dashboard, Recap)       │   │
 │  │  - Public (Home, Liste appels)    │   │
 │  └──────────────────────────────────┘   │
 │  ┌──────────────────────────────────┐   │
 │  │  Services                         │   │
 │  │  - AuthService                    │   │
-│  │  - ProjetService                  │   │
-│  │  - OrganismeService               │   │
+│  │  - DemandeSubventionService       │   │
+│  │  - AAPService                     │   │
+│  │  - OrganisationService            │   │
 │  └──────────────────────────────────┘   │
 │  ┌──────────────────────────────────┐   │
 │  │  Guards & Interceptors            │   │
@@ -120,20 +143,75 @@ La plateforme propose un design moderne avec :
 │  │  - Cookie Interceptor             │   │
 │  └──────────────────────────────────┘   │
 └─────────────────────────────────────────┘
-           ↕️ HTTP REST API
+           ↕️ HTTP REST API (JWT)
 ┌─────────────────────────────────────────┐
-│        Backend TypeScript API           │
-│  (En cours de développement)            │
+│    Backend TypeScript (Port 4000)      │
+│  ┌──────────────────────────────────┐   │
+│  │  Controllers                      │   │
+│  │  - AuthController                 │   │
+│  │  - DemandeSubventionController    │   │
+│  │  - AAPController                  │   │
+│  │  - OrganisationController         │   │
+│  │  - SondageController              │   │
+│  └──────────────────────────────────┘   │
+│  ┌──────────────────────────────────┐   │
+│  │  Services (Business Logic)        │   │
+│  │  - AuthService                    │   │
+│  │  - DemandeSubventionService       │   │
+│  │  - EmailService (Nodemailer)      │   │
+│  └──────────────────────────────────┘   │
+│  ┌──────────────────────────────────┐   │
+│  │  Middlewares                      │   │
+│  │  - Authentication (JWT)           │   │
+│  │  - File Upload (Multer)           │   │
+│  │  - Error Handler                  │   │
+│  └──────────────────────────────────┘   │
+└─────────────────────────────────────────┘
+           ↕️ Prisma ORM
+┌─────────────────────────────────────────┐
+│      PostgreSQL Database (Neon)        │
+│  - Utilisateurs & Sessions             │
+│  - Organisations                        │
+│  - AppelProjets & Thématiques           │
+│  - DemandeSubvention                    │
+│  - Activités & Budget                   │
+│  - PièceJointe & Évaluations            │
+│  - OTP & SurveyResponse                 │
 └─────────────────────────────────────────┘
 ```
 
-### Architecture des composants
+### Flux d'Authentification
 
-- **Composants publics** : Accessibles sans authentification
-- **Composants utilisateur** : Protégés par `AuthGuard`
-- **Composants admin** : Protégés par `AdminGuard`
-- **Services partagés** : Communication avec l'API backend
-- **Models** : DTOs TypeScript pour le typage fort
+```
+1. INSCRIPTION
+   User → [Register] → Backend generates OTP → Email sent
+   User → [OTP Page] → Backend validates → Account created → JWT token → Redirect to Sondage
+   User → [Sondage] → Save response → Redirect to Dashboard
+
+2. CONNEXION
+   User → [Login] → Backend validates credentials → JWT token → Redirect to Dashboard
+
+3. RESET PASSWORD
+   User → [Forgot Password] → Backend generates reset token → Email sent
+   User → [Reset Password Page] → Backend validates token → Password updated
+```
+
+### Flux de Soumission de Demande
+
+```
+1. User authenticated → Access Soumission Form
+2. Fill multi-step wizard:
+   - Projet info (titre, localisation, durée, etc.)
+   - Activités (avec sous-activités et dates)
+   - Budget (lignes budgétaires par activité)
+   - Risques (description et mitigation)
+   - Documents (upload pièces jointes)
+3. Review on Recap page
+4. Submit → Status: SOUMIS
+5. Backend sends confirmation emails
+6. Admin evaluates → Change status
+7. User receives notification
+```
 
 ## 🛠️ Technologies
 
@@ -141,31 +219,36 @@ La plateforme propose un design moderne avec :
 
 | Technologie          | Version | Usage                       |
 | -------------------- | ------- | --------------------------- |
-| **Angular**          | 20.3    | Framework principal         |
-| **TypeScript**       | 5.9     | Langage de développement    |
-| **Tailwind CSS**     | 3.4     | Framework CSS utility-first |
-| **Angular Material** | 20.2    | Composants UI               |
-| **RxJS**             | 7.8     | Gestion de la réactivité    |
-| **SweetAlert2**      | 11.24   | Notifications et modales    |
-| **Angular CDK**      | 20.2    | Utilities Angular           |
+| **Angular**          | 20.3.0  | Framework principal         |
+| **TypeScript**       | 5.9.2   | Langage de développement    |
+| **Tailwind CSS**     | 3.4.17  | Framework CSS utility-first |
+| **Angular Material** | 20.2.5  | Composants UI               |
+| **RxJS**             | 7.8.0   | Gestion de la réactivité    |
+| **SweetAlert2**      | 11.24.0 | Notifications et modales    |
+| **Axios**            | 1.12.2  | Requêtes HTTP               |
 
-### Backend (En développement)
+### Backend
 
-| Technologie               | Usage prévu               |
-| ------------------------- | ------------------------- |
-| **Node.js + TypeScript**  | Runtime & langage backend |
-| **Express**               | Framework web             |
-| **PostgreSQL / MongoDB**  | Base de données           |
-| **Prisma / TypeORM**      | ORM                       |
-| **JWT**                   | Authentification          |
-| **Nodemailer**            | Envoi d'emails (OTP)      |
-| **WhatsApp Business API** | Chatbot support           |
+| Technologie           | Version | Usage                     |
+| --------------------- | ------- | ------------------------- |
+| **Node.js**           | 18+     | Runtime JavaScript        |
+| **TypeScript**        | 5.9.3   | Langage backend           |
+| **Express**           | 5.1.0   | Framework web             |
+| **Prisma**            | 6.17.1  | ORM pour PostgreSQL       |
+| **PostgreSQL**        | Latest  | Base de données (Neon DB) |
+| **JWT**               | 9.0.2   | Authentification          |
+| **Nodemailer**        | 7.0.9   | Envoi d'emails            |
+| **bcryptjs**          | 3.0.2   | Hashing mots de passe     |
+| **Multer**            | 2.0.2   | Upload de fichiers        |
+| **PDFKit**            | 0.17.2  | Génération de PDF         |
+| **CORS**              | 2.8.5   | Cross-Origin Resource Sharing |
 
 ### DevOps & Outils
 
 - **Git** : Contrôle de version
 - **NPM** : Gestionnaire de paquets
-- **Angular CLI** : Outils de développement
+- **Angular CLI** : Outils de développement Angular
+- **tsx** : Exécution TypeScript en développement
 - **Prettier** : Formatage du code
 - **Karma & Jasmine** : Tests unitaires
 
@@ -173,17 +256,22 @@ La plateforme propose un design moderne avec :
 
 Avant de commencer, assurez-vous d'avoir installé :
 
+### Pour le Frontend
 - **Node.js** : v18.x ou supérieur
 - **NPM** : v9.x ou supérieur
 - **Angular CLI** : v20.x
-- **Git** : Dernière version
+
+### Pour le Backend
+- **Node.js** : v18.x ou supérieur
+- **NPM** : v9.x ou supérieur
+- **PostgreSQL** : v14.x ou supérieur (ou compte Neon DB)
 
 Vérifiez vos versions :
 
 ```bash
 node --version
 npm --version
-ng version
+ng version    # Pour le frontend
 git --version
 ```
 
@@ -193,564 +281,820 @@ git --version
 
 ```bash
 git clone https://github.com/votre-org/fpbg.git
-cd fpbg/front-fpbg
+cd Prod
 ```
 
-### 2. Installer les dépendances
+### 2. Installation du Backend
 
 ```bash
+cd backend
+
+# Installer les dépendances
 npm install
+
+# Copier le fichier d'environnement
+cp .env.example .env
+
+# Éditer le fichier .env avec vos configurations
+# Voir la section Configuration ci-dessous
+
+# Générer le client Prisma
+npx prisma generate
+
+# Exécuter les migrations de base de données
+npx prisma migrate dev
+
+# Démarrer le serveur de développement
+npm run dev
 ```
 
-### 3. Configuration de l'environnement
+Le backend sera accessible sur `http://localhost:4000`
 
-Créez un fichier `src/environments/environment.development.ts` :
+### 3. Installation du Frontend
 
-```typescript
-export const environment = {
-  production: false,
-  apiUrl: 'http://localhost:3000/api',
-  whatsappNumber: '+241XXXXXXXXX',
-  enableDebugMode: true
-};
+```bash
+cd ../frontend
+
+# Installer les dépendances
+npm install
+
+# Démarrer le serveur de développement
+npm start
 ```
 
-Pour la production, créez `src/environments/environment.ts` :
-
-```typescript
-export const environment = {
-  production: true,
-  apiUrl: 'http://localhost:4000',
-  whatsappNumber: '+241XXXXXXXXX',
-  enableDebugMode: false
-};
-```
+Le frontend sera accessible sur `http://localhost:4200`
 
 ## ⚙️ Configuration
 
-### Tailwind CSS
+### Configuration Backend (`.env`)
 
-Le projet utilise Tailwind CSS. Configuration dans `tailwind.config.js` :
+Créez un fichier `.env` dans le dossier `backend/` :
 
-```javascript
-module.exports = {
-  content: ['./src/**/*.{html,ts}'],
-  theme: {
-    extend: {
-      colors: {
-        'fpbg-green': '#16a34a',
-        'fpbg-blue': '#0284c7'
-      }
-    }
+```env
+# Base de données PostgreSQL
+DATABASE_URL="postgresql://user:password@host:5432/database?sslmode=require"
+
+# Sécurité JWT
+JWT_SECRET="votre_cle_secrete_tres_forte_ici"
+
+# Configuration SMTP (envoi d'emails)
+SMTP_HOST="mail.votre-serveur.com"
+SMTP_PORT="465"
+SMTP_USER="no-reply@votredomaine.com"
+SMTP_PASS="votre_mot_de_passe_smtp"
+
+# URLs et Domaines
+FRONTEND_URL="http://localhost:4200"
+FRONT_URL="http://localhost:4200"
+
+# Serveur
+PORT=4000
+NODE_ENV="development"
+```
+
+**⚠️ Important** :
+- Changez `JWT_SECRET` avec une clé forte (64+ caractères aléatoires)
+- Configurez vos paramètres SMTP pour l'envoi d'emails
+- Utilisez une vraie base de données PostgreSQL (recommandé : Neon DB)
+
+### Configuration Frontend
+
+#### Développement Local (`environment.ts`)
+
+Fichier : `frontend/src/environments/environment.ts`
+
+```typescript
+const API_DOMAIN = 'localhost';
+const FRONTEND_DOMAIN = 'localhost';
+const API_PROTOCOL = 'http';
+const API_PORT = ':4000';
+const API_BASE_URL = `${API_PROTOCOL}://${API_DOMAIN}${API_PORT}`;
+
+export const environment = {
+  appVersion: packageInfo.version,
+  production: false,
+  urlServer: API_BASE_URL,
+  apiBaseUrl: `${API_BASE_URL}/api`,
+  domains: {
+    api: API_DOMAIN,
+    frontend: FRONTEND_DOMAIN,
   },
-  plugins: []
+  activerSondagePostOtp: true,
+  cleQuestionnaireSondage: 'acquisition_channel_v1',
+  liens: {
+    siteOfficiel: 'https://fpbg.org/',
+    whatsappChannel: 'https://whatsapp.com/channel/...',
+    // ... autres liens
+  },
 };
 ```
 
-### Angular Material
+#### Production (`environment.prod.ts`)
 
-Configuration du thème dans `src/styles.scss` :
+Modifiez uniquement ces lignes pour la production :
 
-```scss
-@use '@angular/material' as mat;
-@include mat.core();
-
-$fpbg-primary: mat.define-palette(mat.$green-palette);
-$fpbg-accent: mat.define-palette(mat.$blue-palette);
-$fpbg-theme: mat.define-light-theme(
-  (
-    color: (
-      primary: $fpbg-primary,
-      accent: $fpbg-accent
-    )
-  )
-);
-
-@include mat.all-component-themes($fpbg-theme);
+```typescript
+const API_DOMAIN = 'api.votre-domaine.com';
+const FRONTEND_DOMAIN = 'votre-domaine.com';
+const API_PROTOCOL = 'https';
+const API_PORT = '';
 ```
 
 ## 💻 Développement
 
-### Démarrer le serveur de développement
+### Démarrer l'environnement de développement complet
 
+**Terminal 1 - Backend :**
 ```bash
+cd backend
+npm run dev
+```
+
+**Terminal 2 - Frontend :**
+```bash
+cd frontend
 npm start
-# ou
-ng serve
 ```
 
 L'application sera accessible sur `http://localhost:4200/`
 
-### Mode watch (recompilation automatique)
+### Commandes utiles
+
+#### Backend
 
 ```bash
-npm run watch
+# Démarrage en mode développement (avec hot reload)
+npm run dev
+
+# Build de production
+npm run build
+
+# Démarrage en production
+npm start
+
+# Générer le client Prisma après modification du schema
+npx prisma generate
+
+# Créer une nouvelle migration
+npx prisma migrate dev --name nom_de_la_migration
+
+# Appliquer les migrations en production
+npx prisma migrate deploy
+
+# Ouvrir Prisma Studio (interface graphique de la DB)
+npx prisma studio
+
+# Exécuter un script
+npm run script:nom-du-script
 ```
 
-### Générer un nouveau composant
+#### Frontend
 
 ```bash
+# Démarrer le serveur de développement
+npm start
+# ou
+ng serve
+
+# Build de production
+npm run build
+# ou
+ng build --configuration production
+
+# Mode watch (recompilation automatique)
+npm run watch
+
+# Générer un composant
 ng generate component components/nom-composant
 # ou raccourci
 ng g c components/nom-composant
-```
 
-### Générer un service
-
-```bash
-ng generate service services/nom-service
-# ou raccourci
+# Générer un service
 ng g s services/nom-service
-```
-
-### Commandes utiles
-
-```bash
-# Générer un module
-ng g module modules/nom-module
 
 # Générer un guard
 ng g guard guards/nom-guard
 
-# Générer un interceptor
-ng g interceptor interceptors/nom-interceptor
+# Générer un module
+ng g module modules/nom-module
 
-# Générer un pipe
-ng g pipe pipes/nom-pipe
+# Tests unitaires
+npm test
 
-# Générer une directive
-ng g directive directives/nom-directive
+# Tests avec couverture
+ng test --code-coverage
 ```
 
 ## 📁 Structure du projet
 
 ```
-front-fpbg/
-├── src/
-│   ├── app/
-│   │   ├── admin/                    # Modules administrateur
-│   │   │   ├── dashboard/            # Dashboard admin
-│   │   │   ├── login/                # Connexion admin
-│   │   │   └── recap/                # Récapitulatif projets
-│   │   ├── user/                     # Modules utilisateur
-│   │   │   ├── api/                  # Services API utilisateur
-│   │   │   ├── core/                 # Services core (auth, guards)
-│   │   │   ├── dashboard/            # Dashboard utilisateur
-│   │   │   ├── form/                 # Formulaires de soumission
-│   │   │   │   ├── soumission/  # Wizard multi-étapes
-│   │   │   │   └── recap/            # Récap avant soumission
-│   │   │   ├── home/                 # Page d'accueil
-│   │   │   ├── login/                # Connexion
-│   │   │   ├── registration/         # Inscription
-│   │   │   ├── otp/                  # Validation OTP
-│   │   │   └── ui/                   # Composants UI
-│   │   ├── services/                 # Services partagés
-│   │   │   ├── auth/                 # Service d'authentification
-│   │   │   ├── organisme/            # Service organismes
-│   │   │   └── interceptors/         # HTTP interceptors
-│   │   ├── model/                    # Modèles TypeScript (DTOs)
-│   │   │   ├── fpbgusersdto.ts
-│   │   │   ├── organisationdto.ts
-│   │   │   ├── projetFormdto.ts
-│   │   │   └── loginvm.ts
-│   │   ├── core/                     # Core modules (guards globaux)
-│   │   ├── liste-appels/             # Liste des appels publics
-│   │   ├── appelaprojet/             # Détails d'un appel
-│   │   ├── page404/                  # Page 404
-│   │   ├── app.routes.ts             # Configuration des routes
-│   │   ├── app.config.ts             # Configuration Angular
-│   │   └── app.ts                    # Composant principal
-│   ├── assets/                       # Ressources statiques
-│   │   ├── logo.png                  # Logo FPBG
-│   │   ├── hero.png                  # Image hero
-│   │   ├── obligations-bleues-logo.png
-│   │   └── whatsapp.png              # Logo WhatsApp
-│   ├── environments/                 # Variables d'environnement
-│   ├── styles.scss                   # Styles globaux
-│   └── index.html                    # Point d'entrée HTML
-├── angular.json                      # Configuration Angular
-├── package.json                      # Dépendances NPM
-├── tailwind.config.js                # Configuration Tailwind
-├── tsconfig.json                     # Configuration TypeScript
+Prod/
+├── backend/                           # API Node.js + TypeScript
+│   ├── prisma/
+│   │   ├── schema.prisma              # Schéma de base de données Prisma
+│   │   └── migrations/                # Migrations de la base de données
+│   ├── src/
+│   │   ├── config/
+│   │   │   ├── db.ts                  # Configuration base de données
+│   │   │   ├── env.ts                 # Variables d'environnement
+│   │   │   └── environment.ts         # Configuration environnement
+│   │   ├── controllers/
+│   │   │   ├── auth.controller.ts     # Authentification
+│   │   │   ├── aap.controller.ts      # Appels à projets
+│   │   │   ├── organisation.controller.ts
+│   │   │   ├── demandeSubvention.controller.ts
+│   │   │   └── sondage.controller.ts
+│   │   ├── services/
+│   │   │   ├── auth.service.ts        # Logique authentification
+│   │   │   ├── aap.service.ts         # Logique appels à projets
+│   │   │   ├── organisation.service.ts
+│   │   │   ├── demandeSubvention.service.ts
+│   │   │   └── sondage.service.ts
+│   │   ├── middlewares/
+│   │   │   ├── auth.middleware.ts     # Validation JWT
+│   │   │   ├── error.middleware.ts    # Gestion d'erreurs
+│   │   │   └── validation.middleware.ts
+│   │   ├── routes/
+│   │   │   ├── auth.routes.ts
+│   │   │   ├── aap.routes.ts
+│   │   │   ├── organisation.routes.ts
+│   │   │   ├── demandeSubvention.routes.ts
+│   │   │   ├── sondage.routes.ts
+│   │   │   └── support.routes.ts
+│   │   ├── types/
+│   │   │   ├── index.ts               # Types TypeScript partagés
+│   │   │   └── sondage.ts
+│   │   ├── utils/
+│   │   │   ├── sendEmail.ts           # Envoi d'emails
+│   │   │   ├── mailer.ts              # Configuration Nodemailer
+│   │   │   ├── generateOtp.ts         # Génération codes OTP
+│   │   │   ├── mail_soumission.ts     # Templates emails
+│   │   │   ├── mail_password_reset.ts
+│   │   │   ├── mail_support.ts
+│   │   │   └── templates/
+│   │   │       ├── acknowledgmentTemplate.ts
+│   │   │       └── internalNotificationTemplate.ts
+│   │   ├── middleware/
+│   │   │   └── upload.ts              # Configuration Multer
+│   │   └── server.ts                  # Point d'entrée serveur
+│   ├── uploads/                       # Fichiers uploadés
+│   ├── .env.example                   # Template de configuration
+│   ├── package.json
+│   └── tsconfig.json
+│
+├── frontend/                          # Application Angular
+│   ├── src/
+│   │   ├── app/
+│   │   │   ├── admin/                 # Modules administrateur
+│   │   │   │   ├── dashboard/         # Dashboard admin
+│   │   │   │   ├── login/             # Connexion admin
+│   │   │   │   ├── recap/             # Récapitulatif demandes
+│   │   │   │   └── admin.route.ts     # Routes admin
+│   │   │   ├── user/                  # Modules utilisateur
+│   │   │   │   ├── api/
+│   │   │   │   │   ├── account.ts     # API compte utilisateur
+│   │   │   │   │   └── sondage.api.ts # API sondage
+│   │   │   │   ├── core/
+│   │   │   │   │   ├── auth.guard.ts
+│   │   │   │   │   ├── auth.service.ts
+│   │   │   │   │   ├── user-auth.guard.ts
+│   │   │   │   │   ├── toast.service.ts
+│   │   │   │   │   └── constants.ts
+│   │   │   │   ├── dashboard/         # Dashboard utilisateur
+│   │   │   │   ├── form/
+│   │   │   │   │   ├── soumission/    # Wizard de soumission
+│   │   │   │   │   └── recap/         # Récapitulatif avant soumission
+│   │   │   │   ├── home/              # Page d'accueil
+│   │   │   │   ├── login/             # Connexion utilisateur
+│   │   │   │   ├── registration/      # Inscription
+│   │   │   │   ├── otp/               # Validation OTP
+│   │   │   │   ├── forgot-password/   # Mot de passe oublié
+│   │   │   │   ├── reset-password/    # Réinitialisation mot de passe
+│   │   │   │   ├── ui/
+│   │   │   │   │   ├── toast-host/    # Système de notifications
+│   │   │   │   │   └── fenetre-sondage/ # Fenêtre sondage
+│   │   │   │   └── user.routes.ts     # Routes utilisateur
+│   │   │   ├── services/
+│   │   │   │   ├── api/
+│   │   │   │   │   ├── axios-instance.ts
+│   │   │   │   │   ├── aap.service.ts
+│   │   │   │   │   ├── organisation.service.ts
+│   │   │   │   │   ├── projet.service.ts
+│   │   │   │   │   └── demande-subvention.service.ts
+│   │   │   │   ├── auth/
+│   │   │   │   │   └── authentifcationservice.ts
+│   │   │   │   ├── organisme/
+│   │   │   │   │   └── organismeservice.ts
+│   │   │   │   ├── support/
+│   │   │   │   │   └── support.service.ts
+│   │   │   │   ├── interceptors/
+│   │   │   │   │   └── cookie-interceptor.ts
+│   │   │   │   ├── pdf.service.ts
+│   │   │   │   └── aprojetv1.ts
+│   │   │   ├── model/                 # Modèles TypeScript (DTOs)
+│   │   │   │   ├── fpbgusersdto.ts
+│   │   │   │   ├── organisationdto.ts
+│   │   │   │   ├── projetFormdto.ts
+│   │   │   │   └── loginvm.ts
+│   │   │   ├── types/
+│   │   │   │   └── models.ts
+│   │   │   ├── core/                  # Guards globaux
+│   │   │   │   ├── auth.guard.ts
+│   │   │   │   ├── auth.service.ts
+│   │   │   │   ├── admin.guard.ts
+│   │   │   │   └── redirect-if-logged-in.guard.ts
+│   │   │   ├── liste-appels/          # Liste appels publics
+│   │   │   ├── appelaprojet/          # Détails appel
+│   │   │   ├── page404/               # Page 404
+│   │   │   ├── app.routes.ts          # Configuration routes
+│   │   │   ├── app.config.ts          # Configuration Angular
+│   │   │   └── app.ts                 # Composant racine
+│   │   ├── assets/                    # Ressources statiques
+│   │   ├── environments/
+│   │   │   ├── environment.ts         # Config développement
+│   │   │   ├── environment.development.ts
+│   │   │   └── environment.prod.ts    # Config production
+│   │   ├── styles.scss                # Styles globaux
+│   │   └── main.ts                    # Point d'entrée
+│   ├── angular.json
+│   ├── package.json
+│   ├── tailwind.config.js
+│   └── tsconfig.json
+│
+├── DEPLOYMENT_GUIDE.md               # Guide de déploiement complet
 └── README.md                         # Ce fichier
 ```
 
-### Détail des modules clés
-
-#### 🏠 Module Home (`user/home/`)
-
-- Page d'accueil publique
-- Hero section avec appel à l'action
-- Statistiques (200M budget, 1ère édition 2025, 4 étapes)
-- Processus de soumission en 4 étapes
-- Section partenaires (FPBG & Obligations Bleues)
-- Promotion application mobile
-- FAQ avec support WhatsApp chatbot
-- Formulaire de contact
-
-#### 📝 Module Form (`user/form/`)
-
-- **Submission Wizard** : Formulaire multi-étapes
-  - Étape 1 : Informations organisation
-  - Étape 2 : Description projet
-  - Étape 3 : Budget et planning
-  - Étape 4 : Documents justificatifs
-- **Recap** : Récapitulatif avant validation
-- Sauvegarde automatique (brouillon)
-- Validation progressive
-
-#### 🔐 Module Auth (`user/core/`)
-
-- **AuthService** : Gestion de l'authentification
-- **AuthGuard** : Protection des routes utilisateur
-- **UserAuthGuard** : Protection spécifique utilisateurs
-- **RedirectIfLoggedInGuard** : Redirection si déjà connecté
-- Gestion des tokens JWT
-- Système OTP par email
-
-#### 🛡️ Module Admin (`admin/`)
-
-- **Dashboard** : Vue d'ensemble administrative
-- **Recap** : Liste et évaluation des projets
-- Gestion des appels à projets
-- Statistiques et exports
-
 ## 🔌 API & Backend
 
-### Architecture API (En développement)
+### Routes API
 
-Le backend TypeScript sera structuré comme suit :
+#### Authentification (`/api/auth`)
 
-```typescript
-// Structure prévue du backend
-backend/
-├── src/
-│   ├── controllers/          // Contrôleurs API
-│   │   ├── auth.controller.ts
-│   │   ├── projet.controller.ts
-│   │   └── organisme.controller.ts
-│   ├── services/             // Logique métier
-│   │   ├── auth.service.ts
-│   │   ├── projet.service.ts
-│   │   ├── email.service.ts
-│   │   └── whatsapp.service.ts
-│   ├── models/               // Modèles de données
-│   │   ├── user.model.ts
-│   │   ├── projet.model.ts
-│   │   └── organisme.model.ts
-│   ├── middleware/           // Middlewares
-│   │   ├── auth.middleware.ts
-│   │   └── validation.middleware.ts
-│   ├── routes/               // Définition des routes
-│   │   ├── auth.routes.ts
-│   │   ├── projet.routes.ts
-│   │   └── admin.routes.ts
-│   ├── config/               // Configuration
-│   │   ├── database.config.ts
-│   │   └── jwt.config.ts
-│   └── app.ts                // Point d'entrée
-├── package.json
-└── tsconfig.json
-```
+| Méthode | Route                    | Description                        | Auth    |
+| ------- | ------------------------ | ---------------------------------- | ------- |
+| POST    | `/register/organisation` | Inscription d'une organisation (Étape 1 : génère OTP) | Public  |
+| POST    | `/register/agent`        | Inscription d'un agent FPBG (génère OTP) | Public  |
+| POST    | `/verify-otp`            | Vérification OTP et création du compte (Étape 2) | Public  |
+| POST    | `/resend-otp`            | Renvoyer un code OTP               | Public  |
+| POST    | `/login`                 | Connexion utilisateur              | Public  |
+| POST    | `/forgot-password`       | Demande de réinitialisation        | Public  |
+| POST    | `/reset-password`        | Réinitialisation mot de passe      | Public  |
+| GET     | `/me`                    | Informations utilisateur connecté  | Privé   |
+| POST    | `/logout`                | Déconnexion                        | Privé   |
+| POST    | `/refresh-token`         | Rafraîchir le token JWT            | Privé   |
 
-### Endpoints API prévus
+#### Demandes de Subvention (`/api/demandes`)
 
-#### Authentification
+| Méthode | Route           | Description                        | Auth           |
+| ------- | --------------- | ---------------------------------- | -------------- |
+| POST    | `/submit`       | Soumettre une demande complète     | Privé (User)   |
+| GET     | `/my-project`   | Récupérer la demande de l'utilisateur | Privé (User) |
+| GET     | `/`             | Liste toutes les demandes (pagination) | Privé       |
+| GET     | `/:id`          | Détails d'une demande              | Privé          |
+| PUT     | `/:id`          | Mettre à jour une demande          | Privé (Owner)  |
+| PATCH   | `/:id`          | Changer le statut d'une demande    | Privé (Owner/Admin) |
+| DELETE  | `/:id`          | Supprimer une demande              | Privé (Owner/Admin) |
 
-```typescript
-POST / api / auth / register; // Inscription utilisateur
-POST / api / auth / login; // Connexion
-POST / api / auth / verify - otp; // Validation OTP
-POST / api / auth / refresh - token; // Rafraîchir token
-POST / api / auth / logout; // Déconnexion
-GET / api / auth / profile; // Profil utilisateur
-```
+#### Appels à Projets (`/api/aap`)
 
-#### Projets
+| Méthode | Route           | Description                        | Auth           |
+| ------- | --------------- | ---------------------------------- | -------------- |
+| GET     | `/`             | Liste des appels à projets         | Public         |
+| GET     | `/:id`          | Détails d'un appel                 | Public         |
+| POST    | `/`             | Créer un appel                     | Privé (Admin)  |
+| PUT     | `/:id`          | Mettre à jour un appel             | Privé (Admin)  |
+| DELETE  | `/:id`          | Supprimer un appel                 | Privé (Admin)  |
 
-```typescript
-GET    /api/projets              // Liste projets (filtrés par user)
-POST   /api/projets              // Créer un projet
-GET    /api/projets/:id          // Détails projet
-PUT    /api/projets/:id          // Modifier projet
-DELETE /api/projets/:id          // Supprimer projet (brouillon)
-POST   /api/projets/:id/submit   // Soumettre projet
-GET    /api/projets/:id/status   // Statut projet
-```
+#### Organisations (`/api/organisations`)
 
-#### Appels à projets
+| Méthode | Route           | Description                        | Auth           |
+| ------- | --------------- | ---------------------------------- | -------------- |
+| GET     | `/`             | Liste des organisations            | Privé          |
+| GET     | `/:id`          | Détails d'une organisation         | Privé          |
+| POST    | `/`             | Créer une organisation             | Privé (Admin)  |
+| PUT     | `/:id`          | Mettre à jour une organisation     | Privé (Admin)  |
+| DELETE  | `/:id`          | Supprimer une organisation         | Privé (Admin)  |
 
-```typescript
-GET    /api/appels               // Liste appels publics
-GET    /api/appels/:id           // Détails appel
-POST   /api/admin/appels         // Créer appel (admin)
-PUT    /api/admin/appels/:id     // Modifier appel (admin)
-DELETE /api/admin/appels/:id     // Supprimer appel (admin)
-```
+#### Sondage (`/api/sondage`)
 
-#### Administration
+| Méthode | Route           | Description                        | Auth           |
+| ------- | --------------- | ---------------------------------- | -------------- |
+| POST    | `/repondre`     | Enregistrer une réponse de sondage | Privé (User)   |
+| GET     | `/ma-reponse`   | Récupérer la réponse de l'utilisateur | Privé (User) |
 
-```typescript
-GET    /api/admin/dashboard      // Statistiques admin
-GET    /api/admin/projets        // Tous les projets
-PUT    /api/admin/projets/:id    // Évaluer projet
-GET    /api/admin/users          // Liste utilisateurs
-PUT    /api/admin/users/:id      // Gérer utilisateur
-```
+#### Support (`/api/support`)
 
-### Modèles de données TypeScript
+| Méthode | Route           | Description                        | Auth           |
+| ------- | --------------- | ---------------------------------- | -------------- |
+| POST    | `/contact`      | Envoyer un message de support      | Public         |
 
-#### User Model
+### Modèles de Données (Prisma)
 
-```typescript
-interface FpbgUsersDto {
-  id?: number;
-  email: string;
-  password: string;
-  nom: string;
-  prenom: string;
-  telephone: string;
-  role: 'USER' | 'ADMIN';
-  isActive: boolean;
-  emailVerified: boolean;
-  createdAt?: Date;
-  updatedAt?: Date;
-  organisation?: OrganisationDto;
+#### Utilisateur
+
+```prisma
+model Utilisateur {
+  id                    String              @id @default(uuid())
+  email                 String              @unique
+  hashMotPasse          String
+  prenom                String?
+  nom                   String?
+  telephone             String?
+  role                  Role                @default(UTILISATEUR)
+  actif                 Boolean             @default(true)
+  idOrganisation        String?
+  resetToken            String?
+  resetTokenExpiry      DateTime?
+  creeLe                DateTime            @default(now())
+  misAJourLe            DateTime            @updatedAt
+
+  soumissions           DemandeSubvention[]
+  evaluations           Evaluation[]
+  piecesJointesValidees PieceJointe[]
+  sessions              Session[]
+  surveyResponses       SurveyResponse[]
+  organisation          Organisation?       @relation(fields: [idOrganisation], references: [id])
+}
+
+enum Role {
+  UTILISATEUR
+  ADMINISTRATEUR
 }
 ```
 
-#### Organisation Model
+#### Organisation
 
-```typescript
-interface OrganisationDto {
-  id?: number;
-  nom: string;
-  type: TypeOrganisation;
-  sigle?: string;
-  adresse: string;
-  telephone: string;
-  email: string;
-  siteWeb?: string;
-  description?: string;
-  dateCreation?: Date;
-  numeroRegistre?: string;
-  userId?: number;
+```prisma
+model Organisation {
+  id               String                  @id @default(cuid())
+  nom              String
+  type             TypeOrganisation
+  email            String?
+  telephone        String?
+  idTypeSubvention Int?
+  creeLe           DateTime                @default(now())
+  misAJourLe       DateTime                @updatedAt
+
+  projets          DemandeSubvention[]
+  liensAppel       LienAppelOrganisation[]
+  typeSubvention   TypeSubvention?
+  utilisateurs     Utilisateur[]
 }
 
 enum TypeOrganisation {
-  ONG = 'ONG',
-  ASSOCIATION = 'ASSOCIATION',
-  COOPERATIVE = 'COOPERATIVE',
-  ENTREPRISE = 'ENTREPRISE',
-  INSTITUTION_PUBLIQUE = 'INSTITUTION_PUBLIQUE'
+  ASSOCIATION
+  ONG
+  COMMUNAUTE
+  COOPERATIVE
+  PME
+  PMI
+  STARTUP
+  SECTEUR_PUBLIC
+  RECHERCHE
+  PRIVE
+  AUTRE
 }
 ```
 
-#### Projet Model
+#### Demande de Subvention
+
+```prisma
+model DemandeSubvention {
+  id                    String           @id @default(cuid())
+  code                  String?          @unique
+  statut                StatutSoumission @default(SOUMIS)
+  typeSoumission        TypeSoumission   @default(NOTE_CONCEPTUELLE)
+  idAppelProjets        String?
+  idOrganisation        String?
+  idSoumisPar           String?
+
+  titre                 String
+  localisation          String
+  groupeCible           String
+  justificationContexte String
+  objectifs             String
+  resultatsAttendus     String
+  dureeMois             Int
+  dateDebutActivites    DateTime
+  dateFinActivites      DateTime
+  resumeActivites       String
+  tauxUsd               Int              @default(655)
+  fraisIndirectsCfa     Decimal          @default(0)
+  stadeProjet           StadeProjet      @default(DEMARRAGE)
+  aFinancement          Boolean          @default(false)
+  detailsFinancement    String?
+  honneurAccepte        Boolean          @default(false)
+  texteDurabilite       String
+  texteReplication      String?
+  domaines              String[]         @default([])
+
+  creeLe                DateTime         @default(now())
+  misAJourLe            DateTime         @updatedAt
+
+  activites             Activite[]
+  appelProjets          AppelProjets?
+  organisation          Organisation?
+  soumisPar             Utilisateur?
+  evaluations           Evaluation[]
+  piecesJointes         PieceJointe[]
+  rapports              Rapport[]
+  risques               Risque[]
+}
+
+enum StatutSoumission {
+  BROUILLON
+  SOUMIS
+  EN_REVUE
+  APPROUVE
+  REJETE
+}
+
+enum TypeSoumission {
+  NOTE_CONCEPTUELLE
+  PROPOSITION_COMPLETE
+}
+
+enum StadeProjet {
+  CONCEPTION
+  DEMARRAGE
+  AVANCE
+  PHASE_FINALE
+}
+```
+
+#### Appel à Projets
+
+```prisma
+model AppelProjets {
+  id               String                  @id @default(cuid())
+  code             String                  @unique
+  titre            String
+  description      String?
+  dateDebut        DateTime
+  dateFin          DateTime
+  etapes           Json?
+  idTypeSubvention Int?
+  creeLe           DateTime                @default(now())
+  misAJourLe       DateTime                @updatedAt
+
+  typeSubvention   TypeSubvention?
+  soumissions      DemandeSubvention[]
+  organisations    LienAppelOrganisation[]
+  thematiques      Thematique[]
+}
+```
+
+### Authentification JWT
+
+Le backend utilise JWT (JSON Web Tokens) pour l'authentification :
+
+- **Génération** : Lors de la connexion ou validation OTP
+- **Stockage** : Cookie httpOnly (sécurisé contre XSS)
+- **Durée de vie** : 7 jours
+- **Validation** : Middleware `auth.middleware.ts`
+- **Refresh** : Endpoint `/api/auth/refresh-token`
+
+**Structure du payload JWT :**
 
 ```typescript
-interface ProjetFormDto {
-  id?: number;
-  titre: string;
-  description: string;
-  objectifs: string;
-  zone_intervention: string;
-  duree_mois: number;
-  budget_total: number;
-  montant_demande: number;
-  date_debut_prevue: Date;
-  beneficiaires_directs: number;
-  beneficiaires_indirects: number;
-  impact_environnemental: string;
-  statut: StatutProjet;
-  appelProjetId: number;
-  organisationId: number;
-  documents?: Document[];
-  createdAt?: Date;
-  updatedAt?: Date;
-}
-
-enum StatutProjet {
-  BROUILLON = 'BROUILLON',
-  SOUMIS = 'SOUMIS',
-  EN_EVALUATION = 'EN_EVALUATION',
-  APPROUVE = 'APPROUVE',
-  REJETE = 'REJETE',
-  EN_COURS = 'EN_COURS',
-  TERMINE = 'TERMINE'
+interface JwtPayload {
+  userId: string;
+  email: string;
+  role: 'UTILISATEUR' | 'ADMINISTRATEUR';
+  iat: number;  // Issued at
+  exp: number;  // Expiration
 }
 ```
 
-### Connexion Frontend-Backend
+### Gestion des Emails
 
-Le frontend communique avec le backend via HTTP :
+Le backend envoie des emails via Nodemailer pour :
 
-```typescript
-// services/aprojetv1.ts
-@Injectable({
-  providedIn: 'root'
-})
-export class AprojetV1Service {
-  private apiUrl = environment.apiUrl;
+- **OTP** : Code de vérification lors de l'inscription
+- **Reset Password** : Lien de réinitialisation du mot de passe
+- **Soumission** : Accusé de réception de demande
+- **Notification interne** : Alerte aux administrateurs
 
-  constructor(private http: HttpClient) {}
+**Configuration SMTP** (dans `.env`) :
 
-  // Récupérer tous les projets de l'utilisateur
-  getMyProjets(): Observable<ProjetFormDto[]> {
-    return this.http.get<ProjetFormDto[]>(`${this.apiUrl}/projets`);
-  }
-
-  // Créer un nouveau projet
-  createProjet(projet: ProjetFormDto): Observable<ProjetFormDto> {
-    return this.http.post<ProjetFormDto>(`${this.apiUrl}/projets`, projet);
-  }
-
-  // Soumettre un projet
-  submitProjet(id: number): Observable<void> {
-    return this.http.post<void>(`${this.apiUrl}/projets/${id}/submit`, {});
-  }
-}
+```env
+SMTP_HOST="mail.starget.tech"
+SMTP_PORT="465"
+SMTP_USER="no-reply-fpbg@singcloud.ga"
+SMTP_PASS="votre_mot_de_passe"
 ```
 
-### Sécurité
+### Upload de Fichiers
 
-- **JWT Authentication** : Tokens stockés dans cookies httpOnly
-- **CORS** : Configuration stricte des origines autorisées
-- **Rate Limiting** : Protection contre les abus
-- **Validation** : Validation des inputs côté backend
-- **Sanitization** : Nettoyage des données utilisateur
-- **HTTPS** : Encryption en production
+Upload de documents justificatifs via Multer :
+
+- **Dossier** : `backend/uploads/projets/`
+- **Types acceptés** : PDF, DOCX, JPG, PNG
+- **Taille max** : 50 MB
+- **Documents requis** :
+  - Lettre de motivation
+  - CV des responsables
+  - Certificat d'enregistrement
+  - Statuts et règlement
+  - Rapports financiers
+  - Budget détaillé
+  - Chronogramme
+  - Et autres selon le type de subvention
+
+## 💾 Base de Données
+
+### Schema Prisma
+
+Le projet utilise Prisma ORM avec PostgreSQL. Schema complet disponible dans `backend/prisma/schema.prisma`.
+
+**Tables principales :**
+
+- `Utilisateur` : Comptes utilisateurs et administrateurs
+- `Session` : Sessions de connexion JWT
+- `Organisation` : Organisations participantes
+- `TypeSubvention` : Types de subventions disponibles
+- `AppelProjets` : Appels à projets publiés
+- `Thematique` : Thématiques par appel
+- `DemandeSubvention` : Demandes de subvention soumises
+- `Activite` : Activités du projet avec sous-activités
+- `LigneBudget` : Lignes budgétaires par activité
+- `Risque` : Risques identifiés et mitigation
+- `PieceJointe` : Documents justificatifs uploadés
+- `Evaluation` : Évaluations par les administrateurs
+- `Otp` : Codes OTP pour validation email
+- `SurveyResponse` : Réponses au sondage d'acquisition
+
+### Migrations
+
+```bash
+# Créer une nouvelle migration
+npx prisma migrate dev --name nom_migration
+
+# Appliquer les migrations en production
+npx prisma migrate deploy
+
+# Réinitialiser la base de données (⚠️ SUPPRIME TOUTES LES DONNÉES)
+npx prisma migrate reset
+
+# Ouvrir Prisma Studio (interface graphique)
+npx prisma studio
+```
+
+### Base de Données Recommandée
+
+**Neon DB** (PostgreSQL serverless) :
+- ✅ Gratuit pour commencer
+- ✅ Hébergement cloud
+- ✅ SSL automatique
+- ✅ Backups automatiques
+- ✅ Scaling automatique
+
+Configuration dans `.env` :
+```env
+DATABASE_URL="postgresql://user:password@ep-xxx.eu-west-2.aws.neon.tech/neondb?sslmode=require"
+```
 
 ## 🌐 Déploiement
 
-### Build de production
+Pour déployer l'application complète en production, consultez le guide détaillé :
+
+📖 **[Guide Complet de Déploiement](DEPLOYMENT_GUIDE.md)**
+
+### Déploiement Rapide
+
+#### Backend
 
 ```bash
-npm run build
-# ou
-ng build --configuration production
+cd backend
+
+# Configuration
+cp .env.example .env
+# Éditer .env avec vos paramètres de production
+
+# Installation et build
+npm install --production
+npx prisma generate
+npx prisma migrate deploy
+
+# Démarrage
+npm start
 ```
 
-Les fichiers de build seront générés dans `dist/front-fpbg/browser/`
-
-### Déploiement sur différentes plateformes
-
-#### Vercel
+#### Frontend
 
 ```bash
-npm install -g vercel
-vercel
-```
+cd frontend
 
-#### Netlify
+# Configuration
+# Éditer src/environments/environment.prod.ts
 
-```bash
-npm install -g netlify-cli
-netlify deploy --prod --dir=dist/front-fpbg/browser
-```
-
-#### AWS S3 + CloudFront
-
-```bash
 # Build
-ng build --configuration production
+npm install
+ng build --configuration=production
 
-# Upload vers S3
-aws s3 sync dist/front-fpbg/browser/ s3://your-bucket-name
-
-# Invalider CloudFront cache
-aws cloudfront create-invalidation --distribution-id YOUR_DIST_ID --paths "/*"
+# Déployer le dossier dist/fpbg/browser/ sur votre serveur web
 ```
 
-#### Docker
+### Plateformes de Déploiement Recommandées
 
-Créez un `Dockerfile` :
+#### Backend
+- **Railway** : Déploiement Node.js simplifié
+- **Heroku** : Platform as a Service
+- **DigitalOcean App Platform** : Conteneurs gérés
+- **VPS** : Serveur dédié (Ubuntu + Nginx + PM2)
 
-```dockerfile
-FROM node:18-alpine AS build
-WORKDIR /app
-COPY package*.json ./
-RUN npm ci
-COPY . .
-RUN npm run build
+#### Frontend
+- **Vercel** : Déploiement Angular optimisé
+- **Netlify** : Hosting statique avec CDN
+- **AWS S3 + CloudFront** : Solution scalable
+- **Nginx** : Serveur web traditionnel
 
-FROM nginx:alpine
-COPY --from=build /app/dist/front-fpbg/browser /usr/share/nginx/html
-COPY nginx.conf /etc/nginx/nginx.conf
-EXPOSE 80
-CMD ["nginx", "-g", "daemon off;"]
-```
+#### Base de Données
+- **Neon DB** : PostgreSQL serverless (recommandé)
+- **Railway PostgreSQL** : PostgreSQL géré
+- **AWS RDS** : PostgreSQL enterprise
 
-Build et run :
+## 🔒 Sécurité
+
+### Mesures de Sécurité Implémentées
+
+#### Authentification et Autorisation
+- **JWT avec httpOnly cookies** : Protection contre XSS
+- **Hashing bcryptjs** : Mots de passe hashés avec salt
+- **OTP email** : Validation en 2 étapes pour l'inscription
+- **Reset tokens** : Tokens uniques avec expiration pour reset password
+- **Guards Angular** : Protection des routes frontend
+- **Middlewares Express** : Validation des requêtes backend
+
+#### Protection des Données
+- **CORS configuré** : Origines autorisées définies
+- **Validation des inputs** : Validation côté backend avec middlewares
+- **Sanitization** : Nettoyage des données utilisateur
+- **HTTPS** : SSL/TLS requis en production
+- **Rate limiting** : Protection contre les abus (à implémenter)
+- **SQL Injection** : Prévention via Prisma ORM
+
+#### Fichiers et Uploads
+- **Validation des types** : Seuls certains types de fichiers acceptés
+- **Limite de taille** : 50 MB maximum
+- **Storage sécurisé** : Fichiers stockés hors de webroot
+- **Scan antivirus** : Recommandé en production
+
+### Checklist Sécurité pour la Production
+
+- [ ] `JWT_SECRET` différent et fort (64+ caractères)
+- [ ] Fichier `.env` dans `.gitignore`
+- [ ] HTTPS activé avec certificat SSL valide
+- [ ] CORS configuré avec origines exactes
+- [ ] Mots de passe SMTP sécurisés
+- [ ] Base de données avec SSL/TLS activé
+- [ ] Rate limiting implémenté
+- [ ] Logs d'erreurs sécurisés (pas de données sensibles)
+- [ ] Backups automatiques de la base de données
+- [ ] Variables d'environnement sécurisées
+- [ ] Scan de sécurité des dépendances NPM (`npm audit`)
+
+### Générer un JWT Secret Fort
 
 ```bash
-docker build -t fpbg-frontend .
-docker run -p 80:80 fpbg-frontend
-```
+# Méthode 1 : Node.js
+node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
 
-### Variables d'environnement en production
+# Méthode 2 : OpenSSL
+openssl rand -hex 64
 
-Assurez-vous de configurer :
-
-```typescript
-export const environment = {
-  production: true,
-  apiUrl: 'http://localhost:4000',
-  whatsappNumber: '+241XXXXXXXXX',
-  enableDebugMode: false,
-  googleAnalyticsId: 'UA-XXXXXXXXX-X'
-};
+# Méthode 3 : Python
+python -c "import secrets; print(secrets.token_hex(64))"
 ```
 
 ## 🧪 Tests
 
-### Tests unitaires
+### Tests Unitaires
 
 ```bash
+# Frontend
+cd frontend
 npm test
-# ou
-ng test
+
+# Backend (à implémenter)
+cd backend
+npm test
 ```
 
-### Tests avec couverture
+### Tests avec Couverture
 
 ```bash
-ng test --code-couvertureGeographique
+cd frontend
+ng test --code-coverage
 ```
 
-Rapport de couverture généré dans `couvertureGeographique/`
+Rapport généré dans `frontend/coverage/`
 
-### Tests E2E
+### Tests E2E (à implémenter)
 
 ```bash
 npm run e2e
-```
-
-### Exemple de test unitaire
-
-```typescript
-import { TestBed } from '@angular/core/testing';
-import { AuthService } from './auth.service';
-
-describe('AuthService', () => {
-  let service: AuthService;
-
-  beforeEach(() => {
-    TestBed.configureTestingModule({});
-    service = TestBed.inject(AuthService);
-  });
-
-  it('should be created', () => {
-    expect(service).toBeTruthy();
-  });
-
-  it('should login successfully', (done) => {
-    service.login('user@example.com', 'password').subscribe((response) => {
-      expect(response.token).toBeDefined();
-      done();
-    });
-  });
-});
 ```
 
 ## 🤝 Contribution
@@ -772,12 +1116,12 @@ git checkout -b feature/ma-nouvelle-fonctionnalite
 
 ### 3. Faire vos modifications
 
-Assurez-vous de suivre les conventions de code :
-
-- Utilisez Prettier pour le formatage
-- Respectez les guidelines Angular
-- Ajoutez des tests unitaires
-- Commentez le code complexe
+Assurez-vous de :
+- Suivre les conventions de code TypeScript
+- Utiliser Prettier pour le formatage
+- Commenter le code complexe
+- Ajouter des tests si possible
+- Mettre à jour la documentation
 
 ### 4. Commit
 
@@ -786,15 +1130,15 @@ git add .
 git commit -m "feat: ajout de la fonctionnalité X"
 ```
 
-Convention de commit (Conventional Commits) :
+**Convention de commit (Conventional Commits) :**
 
 - `feat:` Nouvelle fonctionnalité
 - `fix:` Correction de bug
 - `docs:` Documentation
-- `style:` Formatage
+- `style:` Formatage, style
 - `refactor:` Refactoring
-- `test:` Tests
-- `chore:` Tâches de maintenance
+- `test:` Ajout de tests
+- `chore:` Maintenance, config
 
 ### 5. Push et Pull Request
 
@@ -802,7 +1146,7 @@ Convention de commit (Conventional Commits) :
 git push origin feature/ma-nouvelle-fonctionnalite
 ```
 
-Ouvrez ensuite une Pull Request sur GitHub.
+Ouvrez ensuite une Pull Request sur GitHub avec une description détaillée.
 
 ## 📄 Licence
 
@@ -832,51 +1176,88 @@ FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
 
 - **Email** : contact@fpbg.org
 - **Téléphone** : (+241) 76 53 34 62
-- **WhatsApp** : +241 XX XX XX XX (Chatbot)
 - **Adresse** : Baie des Rois, Immeuble FGIS, 2ème étage, Libreville, Gabon
 - **Site web** : https://fpbg.org
 - **Réseaux sociaux** :
-  - Facebook : [FPBG Gabon](https://www.facebook.com/profile.php?id=61572016092621)
-  - Twitter : [@FPBG_Gabon](https://x.com/FPBG_Gabon)
-  - LinkedIn : [FPBG](https://www.linkedin.com/company/106050434/)
+  - [Facebook](https://www.facebook.com/profile.php?id=61572016092621)
+  - [Twitter/X](https://x.com/FPBG_Gabon)
+  - [LinkedIn](https://www.linkedin.com/company/106050434/)
+  - [Instagram](https://instagram.com/fpbg.gabon)
+  - [YouTube](https://youtube.com/@fpbg-gabon)
+  - [WhatsApp Channel](https://whatsapp.com/channel/0029Vb6tduQK0IBibg4ui80B)
 
 ## 🔮 Roadmap
 
-### Version 1.0 (Actuelle)
+### Version 1.0 (Actuelle) ✅
 
-- ✅ Page d'accueil complète
-- ✅ Authentification utilisateur
-- ✅ Formulaire de soumission multi-étapes
-- ✅ Dashboard utilisateur
+- ✅ Authentification complète (inscription, OTP, login, reset password)
+- ✅ Système de sondage post-inscription
+- ✅ Gestion des organisations
+- ✅ Gestion des appels à projets avec thématiques
+- ✅ Formulaire de soumission multi-étapes complet
+- ✅ Upload de documents justificatifs
+- ✅ Dashboard utilisateur avec statuts
 - ✅ Dashboard administrateur
-- ✅ Support WhatsApp chatbot
+- ✅ Évaluation de demandes
+- ✅ Génération de PDF
+- ✅ Notifications email automatiques
+- ✅ API REST complète avec Prisma + PostgreSQL
 
-### Version 1.1 (À venir)
+### Version 1.1 (Prochaine) 🔄
 
-- 🔄 Application mobile iOS/Android
-- 🔄 Mode hors ligne pour l'app mobile
-- 🔄 Notifications push
-- 🔄 Exports PDF des projets
+- [ ] Amélioration du système d'évaluation
+- [ ] Exports CSV/Excel des demandes
+- [ ] Recherche et filtres avancés
+- [ ] Notifications en temps réel (WebSockets)
+- [ ] Module de reporting avancé
+- [ ] Suivi des versions de demandes
+- [ ] Commentaires sur les demandes
 
-### Version 2.0 (Futur)
+### Version 2.0 (Futur) 📅
 
-- 📅 Système de notation et d'évaluation avancé
-- 📅 Intégration paiements en ligne
-- 📅 Module de reporting avancé
-- 📅 API publique pour partenaires
-- 📅 Multi-langue (FR/EN)
+- [ ] Application mobile iOS/Android (React Native)
+- [ ] Mode hors ligne pour l'app mobile
+- [ ] Notifications push mobiles
+- [ ] Intégration paiements en ligne
+- [ ] Workflow d'approbation multi-niveaux
+- [ ] API publique pour partenaires
+- [ ] Multi-langue (FR/EN)
+- [ ] Module de formation en ligne
+- [ ] Système de chat en temps réel
 
 ## 🙏 Remerciements
 
 Merci à toutes les organisations et personnes qui contribuent à la conservation de la biodiversité au Gabon :
 
-- **FPBG** - Pour le financement et le support
-- **Obligations Bleues** - Partenaire stratégique
-- **Communauté open-source** - Pour les outils et frameworks
-- **Contributeurs** - Pour leur travail et dévouement
+- **FPBG** - Pour le financement et le support du projet
+- **Obligations Bleues** - Partenaire stratégique dans le financement
+- **Communauté Open Source** - Pour les frameworks et outils (Angular, Express, Prisma, etc.)
+- **Neon DB** - Pour l'hébergement de la base de données
+- **Contributeurs** - Pour leur travail et dévouement au projet
+
+## 🌟 Statistiques du Projet
+
+- **200M+ FCFA** de budget disponible
+- **4 étapes** de soumission simplifiées
+- **1ère édition** lancée en 2025
+- **Architecture full-stack TypeScript** moderne
+- **Base de données PostgreSQL** avec Prisma ORM
+- **Sécurité avancée** avec JWT, OTP, HTTPS
+- **Responsive design** avec Tailwind CSS
+- **Email automatisé** avec Nodemailer
 
 ---
 
 **Développé avec ❤️ pour la conservation de la biodiversité au Gabon** 🇬🇦
 
-_Pour toute question ou suggestion, n'hésitez pas à ouvrir une issue sur GitHub ou à nous contacter directement._
+_Pour toute question, suggestion ou contribution, n'hésitez pas à ouvrir une issue sur GitHub ou à nous contacter directement._
+
+---
+
+## 📚 Documentation Complémentaire
+
+- [Guide de Déploiement Complet](DEPLOYMENT_GUIDE.md)
+- [Configuration Backend](backend/DEPLOYMENT.md)
+- [Configuration Frontend](frontend/DEPLOYMENT.md)
+- [Schema Prisma](backend/prisma/schema.prisma)
+- [Variables d'Environnement](backend/.env.example)
