@@ -4,7 +4,7 @@ import { Component, computed, inject, OnDestroy, OnInit, signal } from '@angular
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { DemandeSubventionService } from '../../services/api/demande-subvention.service';
-import { DemandeSubvention, Activite as ActiviteModel, LigneBudget, Risque as RisqueModel, PieceJointe } from '../../types/models';
+import { DemandeSubvention, Activite as ActiviteModel, LigneBudget, Risque as RisqueModel, PieceJointe, StatutSoumission } from '../../types/models';
 import { PdfService } from '../../services/pdf.service';
 import { Subscription } from 'rxjs';
 
@@ -95,71 +95,7 @@ export class SubmissionRecap implements OnInit, OnDestroy {
   private sanitizer = inject(DomSanitizer);
   private subs = new Subscription();
 
-  /** ===== Démo par défaut si rien dans le LS ===== */
-  private staticDemo: Submission = {
-    step1: {
-      nom_organisation: 'Association Rivière Claire',
-      type: 'ONG',
-      contactPerson: 'Mireille Ndong',
-      geocouvertureGeographique: 'Prov. de l’Estuaire',
-      domains: 'Conservation, ingénierie écologique, sensibilisation',
-      address: 'Baie des Rois, Immeuble FGIS 2ème étage',
-      contactEmail: 'contact@riviereclaire.org',
-      contactPhone: '+241 06 00 00 00',
-    },
-    step2: {
-      title: 'Restauration de 3 km de berges pour la résilience climatique',
-      locationAndTarget:
-        'Rivières Nkomi & Komo. Groupes cibles : villages riverains, pêcheurs artisanaux, comités locaux.',
-      contextJustification:
-        'Érosion des berges, turbidité, perte d’habitats. Ingénierie écolo, replantation, suivi & sensibilisation.',
-    },
-    step3: {
-      objectives:
-        'Stabiliser les berges ; améliorer la qualité de l’eau ; renforcer la gouvernance locale.',
-      expectedResults:
-        '3 km traités ; 18 000 plants ; 6 comités formés ; indicateurs qualité eau en progrès.',
-      durationMonths: 12,
-    },
-    activitiesSummary:
-      'Cartographie, plan d’ingénierie, travaux, replantation, suivi hydrologique, sensibilisation.',
-    activities: [
-      { label: 'Cartographie & diagnostic', months: [1, 2] },
-      { label: 'Ingénierie écologique', months: [3, 4, 5] },
-      { label: 'Replantation', months: [6, 7, 8] },
-      { label: 'Suivi & biodiversité', months: [2, 6, 9, 12] },
-      { label: 'Sensibilisation', months: [1, 4, 7, 10] },
-    ],
-    risks: [
-      {
-        description: 'Crues exceptionnelles',
-        mitigation: 'Fenêtre travaux + protections provisoires',
-      },
-      { description: 'Blocages administratifs', mitigation: 'Concertation précoce autorités' },
-    ],
-    budgetLines: [
-      { category: 'ACTIVITES_TERRAIN', description: 'Travaux ingénierie écolo', total: 55_000_000 },
-      { category: 'INVESTISSEMENTS', description: 'Matériels de suivi', total: 12_000_000 },
-      { category: 'FONCTIONNEMENT', description: 'Coordination & logistique', total: 6_000_000 },
-    ],
-    stateStep: {
-      projectStage: 'DEMARRAGE',
-      hasFunding: true,
-      fundingDetails: 'Co-fin A/B : 20 M FCFA',
-    },
-    sustainabilityStep: {
-      sustainability: 'Maintenance par comités ; convention communale.',
-      replicability: 'Réplicable dans 2 bassins voisins.',
-    },
-    attachments: {
-      LETTRE_MOTIVATION: 'Lettre.pdf',
-      STATUTS_REGLEMENT: 'Statuts.pdf',
-      BUDGET_DETAILLE: 'Budget.xlsx',
-    },
-    status: 'BROUILLON',
-    updatedAt: Date.now(),
-  };
-
+  
   /** ===== Chargement depuis LS ===== */
   private loadFromSubmitted(idHint?: string | null): Submission | null {
     try {
@@ -248,7 +184,7 @@ export class SubmissionRecap implements OnInit, OnDestroy {
           },
           activitiesSummary: d?.activitiesSummary || '',
           activities: d?.activities || [],
-          risks: d?.risks || [],
+          risks: d?.risques || [],
           budgetLines: d?.budgetLines || [],
           stateStep: {
             projectStage: d?.stateStep?.projectStage || 'CONCEPTION',
@@ -271,9 +207,9 @@ export class SubmissionRecap implements OnInit, OnDestroy {
     return null;
   }
 
-  private loadInitial(): Submission {
+  private loadInitial(): Submission | null {
     const idFromRoute = this.route.snapshot.paramMap.get('id');
-    return this.loadFromSubmitted(idFromRoute) || this.loadFromDraft() || this.staticDemo;
+    return this.loadFromSubmitted(idFromRoute) || this.loadFromDraft() || null;
   }
 
   submission = signal<Submission | null>(this.loadInitial());
@@ -317,9 +253,8 @@ export class SubmissionRecap implements OnInit, OnDestroy {
   };
   ngOnInit() {
     document.addEventListener('keydown', this.escHandler);
-
-    // Try to fetch the live DemandeSubvention from the backend and override the local/demo view
     const idFromRoute = this.route.snapshot.paramMap.get('id');
+
     if (idFromRoute) {
       this.isLoading.set(true);
 
@@ -331,11 +266,12 @@ export class SubmissionRecap implements OnInit, OnDestroy {
               if (list.length > 0) {
                 const first = list[0];
                 this.submission.set(this.mapDemandeToSubmission(first));
+                // store backend id for actions
+                this.currentDemandeId.set(first.id || null);
               }
               this.isLoading.set(false);
             },
             error: () => {
-              // keep local/demo
               this.isLoading.set(false);
             },
           })
@@ -345,18 +281,20 @@ export class SubmissionRecap implements OnInit, OnDestroy {
           this.demandeService.obtenirParId(idFromRoute).subscribe({
             next: (res) => {
               const d = res?.data;
-              if (d) this.submission.set(this.mapDemandeToSubmission(d));
+              if (d) {
+                this.submission.set(this.mapDemandeToSubmission(d));
+                // store backend id for actions
+                this.currentDemandeId.set(d.id || idFromRoute);
+              }
               this.isLoading.set(false);
             },
             error: () => {
-              // keep local/demo
               this.isLoading.set(false);
             },
           })
         );
       }
     } else {
-      // Pas d'ID dans la route, pas besoin de charger depuis l'API
       this.isLoading.set(false);
     }
   }
@@ -630,5 +568,176 @@ export class SubmissionRecap implements OnInit, OnDestroy {
       fileType: 'application/pdf',
       url: value,
     }));
+  }
+
+  // NEW: id courant si la submission vient du backend (permet appels API)
+  currentDemandeId = signal<string | null>(null);
+
+  // NEW: actions (modaux / raison / loading)
+  actionLoading = signal(false);
+  confirmModalOpen = signal(false);
+  rejectModalOpen = signal(false);
+  rejectReason = signal('');
+
+  /** ===== Actions admin : confirmer conformité / rejeter avec motif ===== */
+
+  openConfirmModal() {
+    this.confirmModalOpen.set(true);
+  }
+  closeConfirmModal() {
+    this.confirmModalOpen.set(false);
+  }
+
+  openRejectModal() {
+    this.rejectModalOpen.set(true);
+  }
+  closeRejectModal() {
+    this.rejectModalOpen.set(false);
+    this.rejectReason.set('');
+  }
+
+  // confirmConformity() {
+  //   const id = this.currentDemandeId();
+  //   if (!id) {
+  //     this.openModal('Erreur', "Impossible d'envoyer la requête : identifiant introuvable.");
+  //     this.closeConfirmModal();
+  //     return;
+  //   }
+
+  //   this.actionLoading.set(true);
+  //   // utiliser any cast pour éviter mismatch signature si le service n'attend pas d'option
+  //   (this.demandeService as any).changerStatut(id, StatutSoumission.EN_REVUE).subscribe({
+  //     next: (res: any) => {
+  //       this.actionLoading.set(false);
+  //       // Mettre à jour l'affichage localement
+  //       this.submission.update((s) => (s ? { ...s, status: 'EN_REVUE', updatedAt: Date.now() } : s));
+  //       this.closeConfirmModal();
+  //       this.openModal('Confirmation', "Le projet a été placé en revue.");
+  //     },
+  //     error: (err: any) => {
+  //       this.actionLoading.set(false);
+  //       console.error('Erreur confirmation conformité', err);
+  //       this.openModal('Erreur', "Erreur lors du passage en revue. Veuillez réessayer.");
+  //     },
+  //   });
+  // }
+
+  // rejectWithReason() {
+  //   const id = this.currentDemandeId();
+  //   if (!id) {
+  //     this.openModal('Erreur', "Impossible d'envoyer la requête : identifiant introuvable.");
+  //     this.closeRejectModal();
+  //     return;
+  //   }
+
+  //   const motif = this.rejectReason() || '';
+  //   if (!motif.trim()) {
+  //     this.openModal('Information', 'Veuillez saisir le motif du rejet avant de confirmer.');
+  //     return;
+  //   }
+
+  //   this.actionLoading.set(true);
+  //   // on envoie le changement de statut ; on tente de passer le motif si le backend l'accepte
+  //   (this.demandeService as any).changerStatut(id, StatutSoumission.REJETE, { motif }).subscribe({
+  //     next: (res: any) => {
+  //       this.actionLoading.set(false);
+  //       this.submission.update((s) => (s ? { ...s, status: 'REFUSE', updatedAt: Date.now() } : s));
+  //       this.closeRejectModal();
+  //       this.openModal('Rejet enregistré', 'Le projet a été rejeté pour non-conformité.');
+  //     },
+  //     error: (err: any) => {
+  //       this.actionLoading.set(false);
+  //       console.error('Erreur rejet', err);
+  //       this.openModal('Erreur', "Erreur lors du rejet. Veuillez réessayer.");
+  //     },
+  //   });
+  // }
+  
+
+  confirmConformity() {
+    const id = this.currentDemandeId();
+    if (!id) {
+      this.openModal('Erreur', "Impossible d'envoyer la requête : identifiant introuvable.");
+      this.closeConfirmModal();
+      return;
+    }
+
+    this.actionLoading.set(true);
+    
+    // ✅ Envoyer le statut EN_REVUE au backend
+    this.demandeService.changerStatut(id, StatutSoumission.EN_REVUE).subscribe({
+      next: (res: any) => {
+        this.actionLoading.set(false);
+        this.closeConfirmModal();
+        
+        // ✅ Recharger les données depuis le backend pour garantir la synchronisation
+        this.demandeService.obtenirParId(id).subscribe({
+          next: (reloadRes) => {
+            if (reloadRes?.data) {
+              this.submission.set(this.mapDemandeToSubmission(reloadRes.data));
+            }
+            this.openModal('Confirmation', "Le projet a été placé en revue avec succès.");
+          },
+          error: () => {
+            // Fallback : mise à jour locale si rechargement échoue
+            this.submission.update((s) => (s ? { ...s, status: 'EN_REVUE', updatedAt: Date.now() } : s));
+            this.openModal('Confirmation', "Le projet a été placé en revue.");
+          }
+        });
+      },
+      error: (err: any) => {
+        this.actionLoading.set(false);
+        console.error('Erreur confirmation conformité', err);
+        this.openModal('Erreur', "Erreur lors du passage en revue. Veuillez réessayer.");
+      },
+    });
+  }
+
+  rejectWithReason() {
+    const id = this.currentDemandeId();
+    if (!id) {
+      this.openModal('Erreur', "Impossible d'envoyer la requête : identifiant introuvable.");
+      this.closeRejectModal();
+      return;
+    }
+
+    const motif = this.rejectReason() || '';
+    if (!motif.trim()) {
+      this.openModal('Information', 'Veuillez saisir le motif du rejet avant de confirmer.');
+      return;
+    }
+
+    this.actionLoading.set(true);
+    
+    // ✅ CORRECTION : Utiliser mettreAJour pour envoyer statut + motifRejet
+    this.demandeService.mettreAJour(id, { 
+      statut: StatutSoumission.REJETE,
+      motifRejet: motif 
+    } as any).subscribe({
+      next: (res: any) => {
+        this.actionLoading.set(false);
+        this.closeRejectModal();
+        
+        // ✅ Recharger les données depuis le backend
+        this.demandeService.obtenirParId(id).subscribe({
+          next: (reloadRes) => {
+            if (reloadRes?.data) {
+              this.submission.set(this.mapDemandeToSubmission(reloadRes.data));
+            }
+            this.openModal('Rejet enregistré', `Le projet a été rejeté.\n\nMotif : ${motif}`);
+          },
+          error: () => {
+            // Fallback : mise à jour locale
+            this.submission.update((s) => (s ? { ...s, status: 'REFUSE', updatedAt: Date.now() } : s));
+            this.openModal('Rejet enregistré', 'Le projet a été rejeté pour non-conformité.');
+          }
+        });
+      },
+      error: (err: any) => {
+        this.actionLoading.set(false);
+        console.error('Erreur rejet', err);
+        this.openModal('Erreur', "Erreur lors du rejet. Veuillez réessayer.");
+      },
+    });
   }
 }

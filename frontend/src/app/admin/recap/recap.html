@@ -40,7 +40,6 @@
         </p>
       </div>
       <div class="actions">
-        <!-- <a class="btn btn-outline" routerLink="/soumission">Modifier</a> -->
         <a class="btn btn-outline" routerLink="/admin/dashboard">Retour au dashboard</a>
       </div>
     </header>
@@ -342,6 +341,28 @@
         <ng-template #noAttachments>
           <p class="muted">Aucune pièce jointe</p>
         </ng-template>
+
+        <!-- NEW: Boutons de validation/rejet uniquement si statut SOUMIS -->
+        <div *ngIf="submission()?.status === 'SOUMIS'" class="actions-annexes">
+          <div class="flex justify-end gap-4 mt-8 pt-6 border-t">
+            <button
+              type="button"
+              class="btn btn-outline-red"
+              (click)="openRejectModal()"
+              [disabled]="!currentDemandeId() || actionLoading()"
+            >
+              Rejeter
+            </button>
+            <button
+              type="button"
+              class="btn btn-green"
+              (click)="openConfirmModal()"
+              [disabled]="!currentDemandeId() || actionLoading()"
+            >
+              Confirmer la conformité
+            </button>
+          </div>
+        </div>
       </article>
 
       <!-- Navigation bas de page (mêmes boutons/logic) -->
@@ -385,6 +406,66 @@
           <button class="btn btn-ghost" (click)="closePdfViewer()">✕ Fermer</button>
         </div>
         <iframe [src]="selectedPdfUrl()" class="pdf-iframe"></iframe>
+      </div>
+    </div>
+
+    <!-- Modale action : confirmation conformité -->
+    <div *ngIf="confirmModalOpen()" class="modal">
+      <div class="backdrop" (click)="closeConfirmModal()"></div>
+      <div class="modal-box">
+        <header class="modal-head">
+          <h3 class="modal-title">Confirmation</h3>
+          <button class="btn btn-ghost" (click)="closeConfirmModal()">Fermer</button>
+        </header>
+        <div class="modal-body">
+          <p>Voulez-vous confirmer la conformité des pièces jointes présentes dans ce projet ?</p>
+          <p style="margin-top:12px;color:#475569">Veuillez noter que cette action est irréversible : le projet passera en revue.</p>
+        </div>
+        <footer class="modal-foot">
+          <div style="display:flex;gap:12px">
+            <button class="btn btn-ghost" (click)="closeConfirmModal()" [disabled]="actionLoading()">Annuler</button>
+            <button class="btn btn-brand" (click)="confirmConformity()" [disabled]="actionLoading()">
+              <span *ngIf="actionLoading()">En cours...</span>
+              <span *ngIf="!actionLoading()">Confirmer</span>
+            </button>
+          </div>
+        </footer>
+      </div>
+    </div>
+
+    <!-- Modale action : rejet avec motif -->
+    <div *ngIf="rejectModalOpen()" class="modal">
+      <div class="backdrop" (click)="closeRejectModal()"></div>
+      <div class="modal-box">
+        <header class="modal-head">
+          <h3 class="modal-title">Confirmation</h3>
+          <button class="btn btn-ghost" (click)="closeRejectModal()">Fermer</button>
+        </header>
+        <div class="modal-body">
+          <p>Pour quel motif rejetez-vous ce dossier ?</p>
+          <textarea
+            rows="6"
+            placeholder="Votre motif"
+            class="w-full mt-3 p-3 border rounded"
+            [value]="rejectReason()"
+            (input)="rejectReason.set($any($event.target)?.value || '')"
+          ></textarea>
+          <p style="margin-top:12px;color:#475569">Veuillez noter que cette action est irréversible.</p>
+        </div>
+        <footer class="modal-foot">
+          <div style="display:flex;gap:12px">
+            <button class="btn btn-ghost" (click)="closeRejectModal()" [disabled]="actionLoading()">Annuler</button>
+            <button
+              class="btn"
+              style="background:#ef4444;color:#fff;border:none;border-radius:12px;padding:10px 20px;font-weight:600"
+              (click)="rejectWithReason()"
+              [disabled]="actionLoading()"
+            >
+              <span *ngIf="actionLoading()">En cours...</span>
+              <span *ngIf="!actionLoading()">Rejeter</span>
+            </button>
+          </div>
+        </footer>
       </div>
     </div>
   </ng-container>
@@ -1454,5 +1535,41 @@
     .pdf-modal-header h3 {
       font-size: 16px;
     }
+  }
+
+  /* add small button style helper for red if needed */
+  :host { --brand-teal: #0b1f2c; --brand-green: #22c55e; }
+  .btn-danger { background:#ef4444;color:#fff;border:none; }
+
+  /* Ajouter styles pour les nouveaux boutons */
+  .actions-annexes {
+    margin-top: 2rem;
+  }
+  
+  .btn-outline-red {
+    border: 1px solid #ef4444;
+    color: #ef4444;
+    background: white;
+    padding: 0.5rem 1rem;
+    border-radius: 0.375rem;
+    font-weight: 500;
+  }
+  
+  .btn-green {
+    background: #22c55e;
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 0.375rem;
+    font-weight: 500;
+  }
+  
+  .btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .border-t {
+    border-top: 1px solid #e5e7eb;
   }
 </style>

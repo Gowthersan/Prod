@@ -72,10 +72,11 @@ export class DemandeSubventionService {
 
   /**
    * Mettre à jour une demande
+   * ✅ CORRECTION : Accepte maintenant statut + motifRejet
    */
   mettreAJour(
     id: string,
-    data: Partial<DemandeSubvention>
+    data: Partial<DemandeSubvention> & { motifRejet?: string }
   ): Observable<{ message: string; data: DemandeSubvention }> {
     return this.http.put<{ message: string; data: DemandeSubvention }>(
       `${this.baseUrl}/${id}`,
@@ -85,14 +86,16 @@ export class DemandeSubventionService {
 
   /**
    * Changer le statut d'une demande (admin uniquement)
+   * ✅ CORRECTION : Accepte maintenant motifRejet comme 2ème paramètre optionnel
    */
   changerStatut(
     id: string,
-    statut: StatutSoumission
+    statut: StatutSoumission,
+    options?: { motifRejet?: string }
   ): Observable<{ message: string; data: DemandeSubvention }> {
     return this.http.patch<{ message: string; data: DemandeSubvention }>(
       `${this.baseUrl}/${id}/statut`,
-      { statut }
+      { statut, ...options }
     );
   }
 

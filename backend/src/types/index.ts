@@ -80,6 +80,7 @@ export interface DemandeSubventionDTO {
 
   // Métadonnées
   statut?: string;
+  motifRejet?: string;
   typeSoumission?: string;
 
   // Étape 1 — Proposition

@@ -164,54 +164,129 @@ export class DemandesController {
    * @desc    Mettre à jour un projet
    * @access  Privé (propriétaire du projet)
    */
-  static async mettreDemandeAJour(req: AuthRequest, res: Response, next: NextFunction) {
-    try {
-      if (!req.user) {
-        res.status(401).json({ message: 'Authentification requise.' });
-        return;
-      }
+  // static async mettreDemandeAJour(req: AuthRequest, res: Response, next: NextFunction) {
+  //   try {
+  //     if (!req.user) {
+  //       res.status(401).json({ message: 'Authentification requise.' });
+  //       return;
+  //     }
 
-      const { id } = req.params;
-      const projetData = req.body;
-      const userId = req.user.userId;
+  //     const { id } = req.params;
+  //     const projetData = req.body;
+  //     const userId = req.user.userId;
 
-      const projet = await demandeSubService.mettreAJour(id!, projetData, userId);
+  //     const projet = await demandeSubService.mettreAJour(id!, projetData, userId);
 
-      res.status(200).json({
-        message: 'Projet mis à jour avec succès.',
-        data: projet
-      });
-    } catch (error) {
-      next(error);
-    }
-  }
+  //     res.status(200).json({
+  //       message: 'Projet mis à jour avec succès.',
+  //       data: projet
+  //     });
+  //   } catch (error) {
+  //     next(error);
+  //   }
+  // }
 
   /**
    * @route   PATCH /api/projets/:id
    * @desc    Mise à jour partielle d'un projet
    * @access  Privé (propriétaire du projet)
    */
-  static async changerStatutDemande(req: AuthRequest, res: Response, next: NextFunction) {
-    try {
-      if (!req.user) {
-        res.status(401).json({ message: 'Authentification requise.' });
-        return;
-      }
+  // static async changerStatutDemande(req: AuthRequest, res: Response, next: NextFunction) {
+  //   try {
+  //     if (!req.user) {
+  //       res.status(401).json({ message: 'Authentification requise.' });
+  //       return;
+  //     }
 
-      const { id } = req.params;
-      const projetData = req.body;
-      const userId = req.user.userId;
+  //     const { id } = req.params;
+  //     const projetData = req.body || {};
+  //     const userId = req.user.userId;
 
-      const projet = await demandeSubService.changerStatut(id!, projetData, userId);
+  //     // Normaliser le motif si fourni sous 'motif'
+  //     if (projetData.motif) {
+  //       projetData.motifRejet = projetData.motif;
+  //     }
 
-      res.status(200).json({
-        message: 'Projet mis à jour avec succès.',
-        data: projet
-      });
-    } catch (error) {
-      next(error);
+  //     const projet = await demandeSubService.changerStatut(id!, projetData, userId);
+
+  //     res.status(200).json({
+  //       message: 'Projet mis à jour avec succès.',
+  //       data: projet
+  //     });
+  //   } catch (error) {
+  //     next(error);
+  //   }
+  // }
+
+  /**
+ * @route   PUT /api/projets/:id
+ * @desc    Mettre à jour un projet
+ * @access  Privé (propriétaire du projet)
+ * ✅ CORRECTION : Gère maintenant statut + motifRejet
+ */
+static async mettreDemandeAJour(req: AuthRequest, res: Response, next: NextFunction) {
+  try {
+    if (!req.user) {
+      res.status(401).json({ message: 'Authentification requise.' });
+      return;
     }
+
+    const { id } = req.params;
+    const projetData = req.body;
+    const userId = req.user.userId;
+
+    console.log('📝 Mise à jour demande:', { id, statut: projetData.statut, motifRejet: projetData.motifRejet });
+
+    const projet = await demandeSubService.mettreAJour(id!, projetData, userId);
+
+    res.status(200).json({
+      message: 'Projet mis à jour avec succès.',
+      data: projet
+    });
+  } catch (error) {
+    next(error);
   }
+}
+
+/**
+ * @route   PATCH /api/projets/:id
+ * @desc    Mise à jour partielle d'un projet (changement statut)
+ * @access  Privé (propriétaire du projet)
+ * ✅ CORRECTION : Transmet maintenant le motifRejet au service
+ */
+static async changerStatutDemande(req: AuthRequest, res: Response, next: NextFunction) {
+  try {
+    if (!req.user) {
+      res.status(401).json({ message: 'Authentification requise.' });
+      return;
+    }
+
+    const { id } = req.params;
+    const projetData = req.body || {};
+    const userId = req.user.userId;
+
+    // ✅ CORRECTION : Normaliser les champs motif/motifRejet
+    if (projetData.motif && !projetData.motifRejet) {
+      projetData.motifRejet = projetData.motif;
+    }
+
+    console.log('🔄 Changement statut:', { 
+      id, 
+      statut: projetData.statut, 
+      motifRejet: projetData.motifRejet,
+      userId 
+    });
+
+    const projet = await demandeSubService.changerStatut(id!, projetData, userId);
+
+    res.status(200).json({
+      message: 'Projet mis à jour avec succès.',
+      data: projet
+    });
+  } catch (error) {
+    next(error);
+  }
+}
 
   /**
    * @route   DELETE /api/projets/:id

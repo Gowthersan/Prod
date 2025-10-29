@@ -16,6 +16,31 @@ export const adminRoutes: Routes = [
     canActivate: [adminGuard], // ✅ Vérifie token + rôle ADMINISTRATEUR
   },
   {
+    path: 'projets',
+    loadComponent: () => import('./projets/projets').then((m) => m.Projets),
+    canActivate: [adminGuard], // ✅ Vérifie token + rôle ADMINISTRATEUR
+  },
+  {
+    path: 'evaluations',
+    loadComponent: () => import('./evaluations/evaluations').then((m) => m.Evaluations),
+    canActivate: [adminGuard], // ✅ Vérifie token + rôle ADMINISTRATEUR
+  },
+  {
+    path: 'statistiques',
+    loadComponent: () => import('./statistiques/statistiques').then((m) => m.Statistiques),
+    canActivate: [adminGuard], // ✅ Vérifie token + rôle ADMINISTRATEUR
+  },
+  {
+    path: 'evaluateurs',
+    loadComponent: () => import('./evaluateurs/evaluateurs').then((m) => m.Evaluateurs),
+    canActivate: [adminGuard], // ✅ Vérifie token + rôle ADMINISTRATEUR
+  },
+  {
+    path: 'historique',
+    loadComponent: () => import('./historique/historique').then((m) => m.Historique),
+    canActivate: [adminGuard], // ✅ Vérifie token + rôle ADMINISTRATEUR
+  },
+  {
     path: 'form/recap/:id',
     loadComponent: () => import('./recap/recap').then((m) => m.SubmissionRecap),
     canActivate: [adminGuard],

@@ -6,7 +6,7 @@
       class="hidden text-xs font-medium bg-white border shadow-sm md:block md:sticky md:top-0 md:self-start md:min-h-screen text-slate-600"
     >
       <div class="p-6 border-b">
-        <p class="text-xl font-bold tracking-wider text-green-400 uppercase">
+        <p class="text-xl font-bold tracking-wider text-emerald-400 uppercase">
           Espace Administrateur
         </p>
 
@@ -16,8 +16,8 @@
             <p class="text-lg font-semibold text-slate-600">{{ totalProjects() }}</p>
           </div>
           <div class="p-3 rounded bg-slate-100">
-            <p class="text-[11px] text-green-400">Soumis</p>
-            <p class="text-lg font-semibold text-slate-600">{{ totalSoumis() }}</p>
+            <p class="text-[11px] text-green-400">Appel à Projets</p>
+            <p class="text-lg font-semibold text-slate-600">{{ statistiques()?.aapCount ?? '-' }}</p>
           </div>
         </div>
       </div>
@@ -25,7 +25,6 @@
       <nav class="p-2 text-sm">
         <div class="px-3 py-2 text-slate-600">Navigation</div>
 
-        <!-- Vue d'ensemble -->
         <a
           routerLink="/admin/dashboard"
           routerLinkActive="bg-green-500/10 border-l-4 border-green-500"
@@ -35,22 +34,45 @@
           Vue d'ensemble
         </a>
 
-        <!-- Appel à Projets -->
-        <!-- <a
-          routerLink="/aap"
+        <a
+          routerLink="/admin/projets"
           routerLinkActive="bg-green-500/10 border-l-4 border-green-500"
           class="block px-3 py-2 cursor-pointer hover:bg-green-500/10 hover:border-l-4 hover:border-green-500"
         >
-          Appel à Projets
+          Projets
         </a>
 
-        Aide & support -->
-        <!-- <a
-          href="mailto:contact@fpbg.ga"
+        <a
+          routerLink="/admin/evaluateurs"
+          routerLinkActive="bg-green-500/10 border-l-4 border-green-500"
           class="block px-3 py-2 cursor-pointer hover:bg-green-500/10 hover:border-l-4 hover:border-green-500"
         >
-          Aide & support
-        </a> -->
+          Evaluateurs
+        </a>
+
+        <a
+          routerLink="/admin/evaluations"
+          routerLinkActive="bg-green-500/10 border-l-4 border-green-500"
+          class="block px-3 py-2 cursor-pointer hover:bg-green-500/10 hover:border-l-4 hover:border-green-500"
+        >
+          Evaluations
+        </a>
+
+        <a
+          routerLink="/admin/statistiques"
+          routerLinkActive="bg-green-500/10 border-l-4 border-green-500"
+          class="block px-3 py-2 cursor-pointer hover:bg-green-500/10 hover:border-l-4 hover:border-green-500"
+        >
+          Statistiques
+        </a>
+
+        <a
+          routerLink="/admin/historique"
+          routerLinkActive="bg-green-500/10 border-l-4 border-green-500"
+          class="block px-3 py-2 cursor-pointer hover:bg-green-500/10 hover:border-l-4 hover:border-green-500"
+        >
+          Historique des actions
+        </a>
       </nav>
 
       <div class="p-2 mt-3 border-t">
@@ -70,18 +92,22 @@
         <div class="min-w-0 flex-1">
           <h1 class="pt-3 text-2xl sm:text-3xl"><strong>Tableau de bord</strong></h1>
           <p class="pt-3 text-sm sm:text-base text-slate-600">
-            Suivi des projets soumis et validation
+            Suivi des projets soumis
           </p>
         </div>
 
-        <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+        <div class="flex items-center gap-3">
           <button
             type="button"
-            class="px-4 py-2 border rounded-lg hover:bg-slate-50"
+            class="inline-flex items-center gap-2 px-4 py-2 border rounded-lg hover:bg-slate-50"
             (click)="refresh()"
             aria-label="Rafraîchir la liste"
           >
-            🔄 Rafraîchir
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path d="M21 12a9 9 0 10-9 9" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+              <path d="M21 3v6h-6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+            </svg>
+            Rafraîchir
           </button>
 
           <button
@@ -95,25 +121,57 @@
         </div>
       </div>
 
-      <!-- Stats cartes -->
-      <div class="grid gap-3 sm:gap-4 mt-6 grid-cols-2 sm:grid-cols-4">
-        <div class="p-4 sm:p-5 bg-white border rounded-xl">
-          <p class="text-xs sm:text-sm text-slate-600 truncate">Total Projets</p>
-          <p class="mt-1 text-xl sm:text-2xl font-semibold">{{ totalProjects() }}</p>
+      <!-- Stats cartes (nouveau style) -->
+      <div class="grid gap-3 sm:gap-4 mt-6 grid-cols-1 sm:grid-cols-4">
+        <div class="p-4 sm:p-5 bg-white border rounded-xl flex items-center justify-between">
+          <div>
+            <p class="text-xs sm:text-sm text-slate-600 truncate">Soumis</p>
+            <p class="mt-1 text-xl sm:text-2xl font-semibold text-indigo-600">{{ totalProjects  () }}</p>
+          </div>
+          <div class="text-slate-300">
+            <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path d="M19 21H5a2 2 0 0 1-2-2V7" stroke-width="2"></path>
+              <path d="M7 10l5 5 5-5" stroke-width="2"></path>
+            </svg>
+          </div>
         </div>
-        <div class="p-4 sm:p-5 bg-white border rounded-xl">
-          <p class="text-xs sm:text-sm text-slate-600 truncate">Soumis</p>
-          <p class="mt-1 text-xl sm:text-2xl font-semibold text-blue-600">{{ totalSoumis() }}</p>
+
+        <div class="p-4 sm:p-5 bg-white border rounded-xl flex items-center justify-between">
+          <div>
+            <p class="text-xs sm:text-sm text-slate-600 truncate">En revues</p>
+            <p class="mt-1 text-xl sm:text-2xl font-semibold text-amber-600">{{ totalEnRevue() }}</p>
+          </div>
+          <div class="text-slate-300">
+            <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path d="M12 2v6l4 2" stroke-width="2"></path>
+              <path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke-width="2"></path>
+            </svg>
+          </div>
         </div>
-        <div class="p-4 sm:p-5 bg-white border rounded-xl">
-          <p class="text-xs sm:text-sm text-slate-600 truncate">En Revue</p>
-          <p class="mt-1 text-xl sm:text-2xl font-semibold text-amber-600">{{ totalEnRevue() }}</p>
+
+        <div class="p-4 sm:p-5 bg-white border rounded-xl flex items-center justify-between">
+          <div>
+            <p class="text-xs sm:text-sm text-slate-600 truncate">Rejetés</p>
+            <p class="mt-1 text-xl sm:text-2xl font-semibold text-rose-600">{{ totalRejete() }}</p>
+          </div>
+          <div class="text-slate-300">
+            <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path d="M18 6L6 18" stroke-width="2"></path>
+              <path d="M6 6l12 12" stroke-width="2"></path>
+            </svg>
+          </div>
         </div>
-        <div class="p-4 sm:p-5 bg-white border rounded-xl">
-          <p class="text-xs sm:text-sm text-slate-600 truncate">Approuvés</p>
-          <p class="mt-1 text-xl sm:text-2xl font-semibold text-emerald-600">
-            {{ totalApprouve() }}
-          </p>
+
+        <div class="p-4 sm:p-5 bg-white border rounded-xl flex items-center justify-between">
+          <div>
+            <p class="text-xs sm:text-sm text-slate-600 truncate">Approuvés</p>
+            <p class="mt-1 text-xl sm:text-2xl font-semibold text-emerald-600">{{ totalApprouve() }}</p>
+          </div>
+          <div class="text-slate-300">
+            <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path d="M20 6L9 17l-5-5" stroke-width="2"></path>
+            </svg>
+          </div>
         </div>
       </div>
 
@@ -168,10 +226,10 @@
             <thead class="sticky top-0 z-20 shadow-sm bg-slate-50">
               <tr class="text-xs font-medium tracking-wide text-left uppercase text-slate-600">
                 <th class="px-3 py-3 w-[20%]">Organisation</th>
-                <th class="px-3 py-3 w-[24%]">Projet</th>
+                <th class="px-3 py-3 w-[30%]">Projet</th>
                 <th class="px-3 py-3 w-[12%]">Statut</th>
                 <th class="px-3 py-3 w-[10%]">Soumis le</th>
-                <th class="px-3 py-3 w-[34%] text-right">Actions</th>
+                <th class="px-3 py-3 w-[28%] text-right">Actions</th>
               </tr>
             </thead>
 
@@ -228,10 +286,10 @@
 
                 <!-- Actions -->
                 <td class="px-3 py-4 align-top">
-                  <div class="flex items-center justify-end gap-1.5 flex-wrap">
+                  <div class="flex items-center justify-end gap-2 flex-wrap">
                     <button
                       type="button"
-                      class="px-2 py-1 rounded-lg border text-xs hover:bg-slate-50 whitespace-nowrap"
+                      class="px-3 py-1.5 rounded-lg border text-xs hover:bg-slate-50 whitespace-nowrap"
                       (click)="goToRecap(demande.id)"
                       aria-label="Voir le récap"
                     >
@@ -241,7 +299,7 @@
                     <button
                       *ngIf="demande.statut === 'SOUMIS'"
                       type="button"
-                      class="px-2 py-1 rounded-lg border text-xs hover:bg-amber-50 text-amber-700 border-amber-200 whitespace-nowrap"
+                      class="px-3 py-1.5 rounded-lg border text-xs hover:bg-amber-50 text-amber-700 border-amber-200 whitespace-nowrap"
                       (click)="markInReview(demande)"
                       aria-label="Mettre en revue"
                       disabled="true"
@@ -252,7 +310,7 @@
                     <button
                       *ngIf="demande.statut === 'SOUMIS' || demande.statut === 'EN_REVUE'"
                       type="button"
-                      class="px-2 py-1 rounded-lg bg-emerald-600 text-white text-xs hover:bg-emerald-700 whitespace-nowrap"
+                      class="px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-xs hover:bg-emerald-700 whitespace-nowrap"
                       (click)="validate(demande)"
                       aria-label="Approuver le projet"
                       disabled="true"
@@ -263,7 +321,7 @@
                     <button
                       *ngIf="demande.statut === 'SOUMIS' || demande.statut === 'EN_REVUE'"
                       type="button"
-                      class="px-2 py-1 rounded-lg border border-rose-200 text-rose-700 text-xs hover:bg-rose-50 whitespace-nowrap"
+                      class="px-3 py-1.5 rounded-lg border border-rose-200 text-rose-700 text-xs hover:bg-rose-50 whitespace-nowrap"
                       (click)="reject(demande)"
                       aria-label="Rejeter le projet"
                       disabled="true"

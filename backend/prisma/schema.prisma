@@ -166,6 +166,7 @@ model DemandeSubvention {
   piecesJointes         PieceJointe[]
   rapports              Rapport[]
   risques               Risque[]
+  motifRejet            String?          // nouveau champ optionnel pour le motif de rejet
 
   @@index([idSoumisPar, creeLe])
   @@index([stadeProjet, statut])

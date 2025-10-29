@@ -1050,70 +1050,203 @@ export class DemandeSubventionService {
   /**
    * Mettre à jour une demande de subvention
    */
-  async mettreAJour(id: string, data: DemandeSubventionDTO, idUtilisateur: string) {
-    try {
-      // Vérifier que la demande existe et appartient à l'utilisateur
-      const demandeExistante = await prisma.demandeSubvention.findUnique({
-        where: { id }
-      });
+  // async mettreAJour(id: string, data: DemandeSubventionDTO, idUtilisateur: string) {
+  //   try {
+  //     // Vérifier que la demande existe et appartient à l'utilisateur
+  //     const demandeExistante = await prisma.demandeSubvention.findUnique({
+  //       where: { id }
+  //     });
 
-      if (!demandeExistante) {
-        throw new AppError('Demande non trouvée.', 404);
+  //     if (!demandeExistante) {
+  //       throw new AppError('Demande non trouvée.', 404);
+  //     }
+
+  //     if (demandeExistante.idSoumisPar !== idUtilisateur) {
+  //       throw new AppError("Vous n'êtes pas autorisé à modifier cette demande.", 403);
+  //     }
+
+  //     // Mettre à jour la demande
+  //     const updateData: any = {};
+
+  //     if (data.titre) updateData.titre = data.titre;
+  //     if (data.localisation) updateData.localisation = data.localisation;
+  //     if (data.groupeCible) updateData.groupeCible = data.groupeCible;
+  //     if (data.justificationContexte) updateData.justificationContexte = data.justificationContexte;
+  //     if (data.objectifs) updateData.objectifs = data.objectifs;
+  //     if (data.resultatsAttendus) updateData.resultatsAttendus = data.resultatsAttendus;
+  //     if (data.dureeMois) updateData.dureeMois = data.dureeMois;
+  //     if (data.dateDebutActivites) updateData.dateDebutActivites = new Date(data.dateDebutActivites);
+  //     if (data.dateFinActivites) updateData.dateFinActivites = new Date(data.dateFinActivites);
+  //     if (data.resumeActivites) updateData.resumeActivites = data.resumeActivites;
+  //     if (data.texteDurabilite) updateData.texteDurabilite = data.texteDurabilite;
+  //     if (data.texteReplication) updateData.texteReplication = data.texteReplication;
+  //     if (data.statut) updateData.statut = data.statut;
+  //     if (data.stadeProjet) updateData.stadeProjet = data.stadeProjet;
+  //     if (data.aFinancement !== undefined) updateData.aFinancement = data.aFinancement;
+  //     if (data.detailsFinancement) updateData.detailsFinancement = data.detailsFinancement;
+  //     if (data.honneurAccepte !== undefined) updateData.honneurAccepte = data.honneurAccepte;
+
+  //     const demande = await prisma.demandeSubvention.update({
+  //       where: { id },
+  //       data: updateData,
+  //       include: {
+  //         organisation: true,
+  //         soumisPar: {
+  //           select: {
+  //             id: true,
+  //             email: true,
+  //             prenom: true,
+  //             nom: true
+  //           }
+  //         },
+  //         appelProjets: {
+  //           include: {
+  //             typeSubvention: true
+  //           }
+  //         }
+  //       }
+  //     });
+
+  //     return demande;
+  //   } catch (error: any) {
+  //     if (error instanceof AppError) throw error;
+  //     console.error('Erreur mise à jour demande:', error);
+  //     throw new AppError('Erreur lors de la mise à jour de la demande: ' + error.message, 500);
+  //   }
+  // }
+
+/**
+ * Mettre à jour une demande de subvention
+ * ✅ CORRECTION : Accepte maintenant statut + motifRejet
+ */
+async mettreAJour(id: string, data: DemandeSubventionDTO, idUtilisateur: string) {
+  try {
+    // Vérifier que la demande existe et appartient à l'utilisateur
+    const demandeExistante = await prisma.demandeSubvention.findUnique({
+      where: { id }
+    });
+
+    if (!demandeExistante) {
+      throw new AppError('Demande non trouvée.', 404);
+    }
+
+    
+
+    // Mettre à jour la demande
+    const updateData: any = {};
+
+    if (data.titre) updateData.titre = data.titre;
+    if (data.localisation) updateData.localisation = data.localisation;
+    if (data.groupeCible) updateData.groupeCible = data.groupeCible;
+    if (data.justificationContexte) updateData.justificationContexte = data.justificationContexte;
+    if (data.objectifs) updateData.objectifs = data.objectifs;
+    if (data.resultatsAttendus) updateData.resultatsAttendus = data.resultatsAttendus;
+    if (data.dureeMois) updateData.dureeMois = data.dureeMois;
+    if (data.dateDebutActivites) updateData.dateDebutActivites = new Date(data.dateDebutActivites);
+    if (data.dateFinActivites) updateData.dateFinActivites = new Date(data.dateFinActivites);
+    if (data.resumeActivites) updateData.resumeActivites = data.resumeActivites;
+    if (data.texteDurabilite) updateData.texteDurabilite = data.texteDurabilite;
+    if (data.texteReplication) updateData.texteReplication = data.texteReplication;
+    
+    // ✅ CORRECTION : Gérer statut ET motifRejet
+    if (data.statut) {
+      updateData.statut = data.statut;
+      
+      // Si on rejette, enregistrer le motif
+      if (data.statut === 'REJETE' && data.motifRejet) {
+        updateData.motifRejet = data.motifRejet;
       }
-
-      if (demandeExistante.idSoumisPar !== idUtilisateur) {
-        throw new AppError("Vous n'êtes pas autorisé à modifier cette demande.", 403);
+      
+      // Si on change vers un autre statut (pas REJETE), effacer le motif
+      if (data.statut !== 'REJETE') {
+        updateData.motifRejet = null;
       }
+    }
+    
+    if (data.stadeProjet) updateData.stadeProjet = data.stadeProjet;
+    if (data.aFinancement !== undefined) updateData.aFinancement = data.aFinancement;
+    if (data.detailsFinancement) updateData.detailsFinancement = data.detailsFinancement;
+    if (data.honneurAccepte !== undefined) updateData.honneurAccepte = data.honneurAccepte;
 
-      // Mettre à jour la demande
-      const updateData: any = {};
-
-      if (data.titre) updateData.titre = data.titre;
-      if (data.localisation) updateData.localisation = data.localisation;
-      if (data.groupeCible) updateData.groupeCible = data.groupeCible;
-      if (data.justificationContexte) updateData.justificationContexte = data.justificationContexte;
-      if (data.objectifs) updateData.objectifs = data.objectifs;
-      if (data.resultatsAttendus) updateData.resultatsAttendus = data.resultatsAttendus;
-      if (data.dureeMois) updateData.dureeMois = data.dureeMois;
-      if (data.dateDebutActivites) updateData.dateDebutActivites = new Date(data.dateDebutActivites);
-      if (data.dateFinActivites) updateData.dateFinActivites = new Date(data.dateFinActivites);
-      if (data.resumeActivites) updateData.resumeActivites = data.resumeActivites;
-      if (data.texteDurabilite) updateData.texteDurabilite = data.texteDurabilite;
-      if (data.texteReplication) updateData.texteReplication = data.texteReplication;
-      if (data.statut) updateData.statut = data.statut;
-      if (data.stadeProjet) updateData.stadeProjet = data.stadeProjet;
-      if (data.aFinancement !== undefined) updateData.aFinancement = data.aFinancement;
-      if (data.detailsFinancement) updateData.detailsFinancement = data.detailsFinancement;
-      if (data.honneurAccepte !== undefined) updateData.honneurAccepte = data.honneurAccepte;
-
-      const demande = await prisma.demandeSubvention.update({
-        where: { id },
-        data: updateData,
-        include: {
-          organisation: true,
-          soumisPar: {
-            select: {
-              id: true,
-              email: true,
-              prenom: true,
-              nom: true
-            }
-          },
-          appelProjets: {
-            include: {
-              typeSubvention: true
-            }
+    const demande = await prisma.demandeSubvention.update({
+      where: { id },
+      data: updateData,
+      include: {
+        organisation: true,
+        soumisPar: {
+          select: {
+            id: true,
+            email: true,
+            prenom: true,
+            nom: true
+          }
+        },
+        appelProjets: {
+          include: {
+            typeSubvention: true
           }
         }
-      });
+      }
+    });
 
-      return demande;
-    } catch (error: any) {
-      if (error instanceof AppError) throw error;
-      console.error('Erreur mise à jour demande:', error);
-      throw new AppError('Erreur lors de la mise à jour de la demande: ' + error.message, 500);
-    }
+    return demande;
+  } catch (error: any) {
+    if (error instanceof AppError) throw error;
+    console.error('Erreur mise à jour demande:', error);
+    throw new AppError('Erreur lors de la mise à jour de la demande: ' + error.message, 500);
   }
+}
+
+/**
+ * Changer le statut d'une demande (admin uniquement)
+ * ✅ CORRECTION : Accepte maintenant le motifRejet pour REJETE
+ */
+async changerStatut(id: string, data: any, userId: string) {
+  try {
+    // Préparer payload de update
+    const updateData: any = {
+      statut: data.statut ?? undefined
+    };
+
+    // ✅ CORRECTION : Gérer motifRejet selon le statut
+    if (data.statut === 'REJETE') {
+      // Si on rejette, enregistrer le motif (même s'il est vide)
+      updateData.motifRejet = data.motifRejet || data.motif || null;
+    } else if (data.statut && data.statut !== 'REJETE') {
+      // Si on change vers un autre statut, effacer le motif
+      updateData.motifRejet = null;
+    }
+
+    const updated = await prisma.demandeSubvention.update({
+      where: { id },
+      data: updateData,
+      include: {
+        organisation: true,
+        soumisPar: {
+          select: {
+            id: true,
+            email: true,
+            prenom: true,
+            nom: true
+          }
+        },
+        appelProjets: {
+          include: {
+            typeSubvention: true
+          }
+        }
+      }
+    });
+
+    console.log(`✅ Statut changé pour ${id} : ${data.statut}${data.statut === 'REJETE' ? ` (motif: ${updateData.motifRejet})` : ''}`);
+
+    return updated;
+  } catch (error: any) {
+    console.error('❌ Erreur changement statut:', error);
+    throw new AppError('Erreur lors du changement de statut: ' + error.message, 500);
+  }
+}
+
 
   /**
    * Supprimer une demande de subvention
@@ -1202,54 +1335,95 @@ export class DemandeSubventionService {
   /**
    * Changer le statut d'une demande (admin uniquement)
    */
-  async changerStatut(id: string, nouveauStatut: string, idAdmin: string) {
-    try {
-      // Vérifier que l'utilisateur est admin
-      const admin = await prisma.utilisateur.findUnique({
-        where: { id: idAdmin }
-      });
+  // async changerStatut(id: string, data: any, userId: string) {
+  //   // préparer payload de update
+  //   const updateData: any = {
+  //     statut: data.statut ?? undefined,
+  //     // si motifRejet présent et statut correspond, l'enregistrer
+  //     motifRejet: data.statut === 'REJETE' ? (data.motifRejet ?? null) : (data.statut !== 'REJETE' ? null : undefined),
+  //     // autres champs si nécessaires...
+  //   };
 
-      if (!admin || admin.role !== 'ADMINISTRATEUR') {
-        throw new AppError('Accès non autorisé. Vous devez être administrateur.', 403);
-      }
+  //   const updated = await prisma.demandeSubvention.update({
+  //     where: { id },
+  //     data: updateData
+  //   });
 
-      // Mettre à jour le statut
-      const demande = await prisma.demandeSubvention.update({
-        where: { id },
-        data: { statut: nouveauStatut as any },
-        include: {
-          organisation: true,
-          soumisPar: {
-            select: {
-              id: true,
-              email: true,
-              prenom: true,
-              nom: true
-            }
-          }
-        }
-      });
+  //   return updated;
+  // }
 
-      // Logger l'action dans le journal d'audit
-      await prisma.journalAudit.create({
-        data: {
-          entite: 'DemandeSubvention',
-          idEntite: id,
-          action: 'changement_statut',
-          idUtilisateur: idAdmin,
-          details: {
-            nouveauStatut: nouveauStatut
-          }
-        }
-      });
+  /**
+ * Changer le statut d'une demande (admin uniquement)
+ * ✅ CORRECTION : Gestion complète du statut et du motifRejet
+ */
+// async changerStatut(id: string, data: any, userId: string) {
+//   try {
+//     console.log('🔄 Changement de statut pour demande:', id);
+//     console.log('📊 Données reçues:', data);
 
-      return demande;
-    } catch (error: any) {
-      if (error instanceof AppError) throw error;
-      console.error('Erreur changement statut:', error);
-      throw new AppError('Erreur lors du changement de statut: ' + error.message, 500);
-    }
-  }
+//     // Préparer les données de mise à jour
+//     const updateData: any = {
+//       misAJourLe: new Date() // ✅ Toujours mettre à jour la date
+//     };
+
+//     // ✅ Gérer le statut
+//     if (data.statut) {
+//       updateData.statut = data.statut;
+//       console.log('✅ Nouveau statut:', data.statut);
+//     }
+
+//     // ✅ Gérer le motifRejet selon le statut
+//     if (data.statut === 'REJETE') {
+//       // Si rejeté, enregistrer le motif (depuis data.motif OU data.motifRejet)
+//       const motif = data.motifRejet || data.motif || null;
+//       updateData.motifRejet = motif;
+//       console.log('✅ Motif de rejet enregistré:', motif);
+//     } else if (data.statut && data.statut !== 'REJETE') {
+//       // Si changement vers un autre statut, effacer le motif
+//       updateData.motifRejet = null;
+//       console.log('✅ Motif de rejet effacé (nouveau statut: ' + data.statut + ')');
+//     }
+
+//     // ✅ Effectuer la mise à jour avec toutes les relations
+//     const updated = await prisma.demandeSubvention.update({
+//       where: { id },
+//       data: updateData,
+//       include: {
+//         organisation: true,
+//         soumisPar: {
+//           select: {
+//             id: true,
+//             email: true,
+//             prenom: true,
+//             nom: true
+//           }
+//         },
+//         appelProjets: {
+//           include: {
+//             typeSubvention: true
+//           }
+//         },
+//         activites: {
+//           include: {
+//             sousActivites: true,
+//             lignesBudget: true
+//           }
+//         },
+//         risques: true,
+//         piecesJointes: true
+//       }
+//     });
+
+//     console.log('✅ Demande mise à jour avec succès');
+//     console.log('   - Nouveau statut:', updated.statut);
+//     console.log('   - Motif rejet:', updated.motifRejet || '(aucun)');
+    
+//     return updated;
+//   } catch (error: any) {
+//     console.error('❌ Erreur lors du changement de statut:', error);
+//     throw new AppError('Erreur lors du changement de statut: ' + error.message, 500);
+//   }
+// }
 }
 
 export default new DemandeSubventionService();
