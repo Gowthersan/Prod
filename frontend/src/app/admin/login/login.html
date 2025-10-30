@@ -18,16 +18,16 @@
       <div>
         <label class="block mb-1 text-sm">Email</label>
         <input
-          type="text"
+          type="email"
           formControlName="email"
-          placeholder="votre nom d'utilisateur"
+          placeholder="votre adresse email"
           class="w-full rounded-lg bg-[#1f4a63] border border-white/10 text-white placeholder-white/60 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500"
         />
         <p
           class="mt-1 text-xs text-red-400"
           *ngIf="form.controls.email.touched && form.controls.email.invalid"
         >
-          Nom d'utilisateur invalide
+          adresse email invalide
         </p>
       </div>
 
