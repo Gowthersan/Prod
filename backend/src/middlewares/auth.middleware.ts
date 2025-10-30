@@ -73,7 +73,7 @@ export const adminMiddleware = (req: Request, res: Response, next: NextFunction)
 interface AuthRequest extends Request {
   user: {
     userId: string;
-    role: 'UTILISATEUR' | 'ADMINISTRATEUR';
+    role: 'UTILISATEUR' | 'ADMINISTRATEUR' | 'EVALUATEUR';
     email: string;
   }; // Explicitement optionnel avec undefined
 }
@@ -120,10 +120,11 @@ export const authenticate: RequestHandler = async (req, res, next) => {
     }
 
     // 4. Valider et déduire le rôle
-    let role: 'UTILISATEUR' | 'ADMINISTRATEUR';
-    if (utilisateur.role === 'UTILISATEUR' || utilisateur.role === 'ADMINISTRATEUR') {
+    let role: 'UTILISATEUR' | 'ADMINISTRATEUR' | 'EVALUATEUR';
+// …
+    if (utilisateur.role === 'UTILISATEUR' || utilisateur.role === 'ADMINISTRATEUR' || utilisateur.role === 'EVALUATEUR') {
       role = utilisateur.role;
-    } else {
+  } else {
       throw new Error('Rôle utilisateur invalide.');
     }
 
