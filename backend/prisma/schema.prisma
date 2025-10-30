@@ -8,25 +8,29 @@ datasource db {
 }
 
 model Utilisateur {
-  id                    String              @id @default(uuid())
-  email                 String              @unique
+  id                    String                @id @default(uuid())
+  email                 String                @unique
   hashMotPasse          String
   prenom                String?
   nom                   String?
   telephone             String?
-  role                  Role                @default(UTILISATEUR)
-  actif                 Boolean             @default(true)
+  role                  Role                  @default(UTILISATEUR)
+  actif                 Boolean               @default(true)
   idOrganisation        String?
-  creeLe                DateTime            @default(now())
-  misAJourLe            DateTime            @updatedAt
+  creeLe                DateTime              @default(now())
+  misAJourLe            DateTime              @updatedAt
   resetToken            String?
   resetTokenExpiry      DateTime?
   soumissions           DemandeSubvention[]
   evaluations           Evaluation[]
-  piecesJointesValidees PieceJointe[]       @relation("ValidateurPieceJointe")
   sessions              Session[]
   surveyResponses       SurveyResponse[]
-  organisation          Organisation?       @relation(fields: [idOrganisation], references: [id])
+  // relations
+  piecesJointesValidees PieceJointe[]         @relation("ValidateurPieceJointe")
+  notificationsRecues   NotificationInterne[] @relation("NotifDest")
+  notificationsEnvoyees NotificationInterne[] @relation("NotifSender")
+  journaux              JournalAction[]
+  organisation          Organisation?         @relation(fields: [idOrganisation], references: [id])
 
   @@index([idOrganisation])
   @@index([resetToken])
@@ -166,7 +170,7 @@ model DemandeSubvention {
   piecesJointes         PieceJointe[]
   rapports              Rapport[]
   risques               Risque[]
-  motifRejet            String?          // nouveau champ optionnel pour le motif de rejet
+  motifRejet            String? // nouveau champ optionnel pour le motif de rejet
 
   @@index([idSoumisPar, creeLe])
   @@index([stadeProjet, statut])
@@ -251,20 +255,50 @@ model PieceJointe {
   @@index([idValidateur])
 }
 
+// model Evaluation {
+//   id           String            @id @default(cuid())
+//   idDemande    String
+//   idEvaluateur String
+//   score        Float?
+//   commentaires String?
+//   criteres     Json?
+//   creeLe       DateTime          @default(now())
+//   misAJourLe   DateTime          @updatedAt
+//   demande      DemandeSubvention @relation(fields: [idDemande], references: [id], onDelete: Cascade)
+//   evaluateur   Utilisateur       @relation(fields: [idEvaluateur], references: [id])
+//
+//   @@index([idDemande])
+//   @@index([idEvaluateur])
+// }
+// model evaluation mise a jour
 model Evaluation {
-  id           String            @id @default(cuid())
+  id           String @id @default(cuid())
   idDemande    String
   idEvaluateur String
+
+  // EXISTANTS
   score        Float?
   commentaires String?
   criteres     Json?
-  creeLe       DateTime          @default(now())
-  misAJourLe   DateTime          @updatedAt
-  demande      DemandeSubvention @relation(fields: [idDemande], references: [id], onDelete: Cascade)
-  evaluateur   Utilisateur       @relation(fields: [idEvaluateur], references: [id])
+  creeLe       DateTime @default(now())
+  misAJourLe   DateTime @updatedAt
+
+  // ←← AJOUTS V2
+  statut          StatutEvaluation @default(BROUILLON) // BROUILLON | SOUMISE
+  soumiseLe       DateTime?
+  grilleVersionId String? // verrouille la grille utilisée
+  notes           NoteEvaluation[] // notes par critère
+
+  // RELATIONS EXISTANTES
+  demande    DemandeSubvention @relation(fields: [idDemande], references: [id], onDelete: Cascade)
+  evaluateur Utilisateur       @relation(fields: [idEvaluateur], references: [id])
+
+  // ←← RELATION AJOUTÉE (optionnelle)
+  grilleVersion GrilleVersion? @relation(fields: [grilleVersionId], references: [id])
 
   @@index([idDemande])
   @@index([idEvaluateur])
+  @@index([statut]) // ← AJOUT (perf dashboard)
 }
 
 model Contrat {
@@ -333,9 +367,16 @@ model SurveyResponse {
   @@index([idUtilisateur], map: "idx_survey_utilisateur")
 }
 
+// enum Role {
+//   UTILISATEUR
+//   ADMINISTRATEUR
+// }
+
+// si Role est un enum
 enum Role {
-  UTILISATEUR
   ADMINISTRATEUR
+  UTILISATEUR
+  EVALUATEUR // <- à ajouter
 }
 
 enum TypeOrganisation {
@@ -406,6 +447,78 @@ enum TypeSoumission {
   PROPOSITION_COMPLETE
 }
 
+// --- [SONDAGE] Enum des canaux d’acquisition ---
+enum SurveyChannel {
+  RESEAUX_SOCIAUX
+  EMAIL
+  SITE_WEB
+  PARTENAIRE
+  BOUCHE_A_OREILLE
+  EVENEMENT
+  MOTEUR_RECHERCHE
+  CHAINE_WHATSAPP // ← ajouté (orthographe standard)
+  AUTRE
+}
+
+// --- [SONDAGE] Réponse post-OTP d'un utilisateur ---
+model SurveyResponse {
+  id            String      @id @default(cuid())
+  idUtilisateur String
+  utilisateur   Utilisateur @relation(fields: [idUtilisateur], references: [id], onDelete: Restrict)
+
+  questionnaireKey String @default("acquisition_channel_v1")
+
+  // ⬇️ AVANT : selectedKeys SurveyChannel[]
+  // ⬆️ APRES :
+  selectedKey SurveyChannel
+
+  otherText String? @db.VarChar(255)
+  comment   String? @db.VarChar(1000)
+  meta      Json?
+
+  creeLe     DateTime @default(now())
+  misAJourLe DateTime @updatedAt
+
+  @@unique([idUtilisateur, questionnaireKey], name: "uniq_utilisateur_questionnaire")
+  @@index([idUtilisateur], name: "idx_survey_utilisateur")
+}
+
+// --- [SONDAGE] Enum des canaux d’acquisition ---
+enum SurveyChannel {
+  RESEAUX_SOCIAUX
+  EMAIL
+  SITE_WEB
+  PARTENAIRE
+  BOUCHE_A_OREILLE
+  EVENEMENT
+  MOTEUR_RECHERCHE
+  CHAINE_WHATSAPP // ← ajouté (orthographe standard)
+  AUTRE
+}
+
+// --- [SONDAGE] Réponse post-OTP d'un utilisateur ---
+model SurveyResponse {
+  id            String      @id @default(cuid())
+  idUtilisateur String
+  utilisateur   Utilisateur @relation(fields: [idUtilisateur], references: [id], onDelete: Restrict)
+
+  questionnaireKey String @default("acquisition_channel_v1")
+
+  // ⬇️ AVANT : selectedKeys SurveyChannel[]
+  // ⬆️ APRES :
+  selectedKey SurveyChannel
+
+  otherText String? @db.VarChar(255)
+  comment   String? @db.VarChar(1000)
+  meta      Json?
+
+  creeLe     DateTime @default(now())
+  misAJourLe DateTime @updatedAt
+
+  @@unique([idUtilisateur, questionnaireKey], name: "uniq_utilisateur_questionnaire")
+  @@index([idUtilisateur], name: "idx_survey_utilisateur")
+}
+
 enum SurveyChannel {
   RESEAUX_SOCIAUX
   EMAIL
@@ -416,4 +529,334 @@ enum SurveyChannel {
   MOTEUR_RECHERCHE
   AUTRE
   CHAINE_WHATSAPP
+}
+//
+// -----------------------------------------------------------------------------
+// ENUMS
+// -----------------------------------------------------------------------------
+
+enum Role {
+  ADMINISTRATEUR
+  UTILISATEUR
+  EVALUATEUR
+}
+
+enum StatutSession {
+  PLANIFIEE
+  EN_COURS
+  TERMINEE
+  ARCHIVEE
+}
+
+enum StatutAffectation {
+  EN_ATTENTE
+  EN_COURS
+  SOUMISE
+  ANNULEE
+}
+
+enum StatutDisponibilite {
+  EN_ATTENTE
+  OUI
+  NON
+}
+
+enum StatutEvaluation {
+  BROUILLON
+  SOUMISE
+}
+
+enum TypeAction {
+  // Sessions
+  SESSION_CREER
+  SESSION_MODIFIER
+  SESSION_PROLONGER
+  SESSION_CLOTURER
+
+  // Offres & éligibilité
+  OFFRE_VALIDER
+  OFFRE_REJETER
+  OFFRE_AJOUTER_A_SESSION
+  OFFRE_RETIRER_DE_SESSION
+
+  // Grilles
+  GRILLE_CREER
+  GRILLE_VERSIONNER
+  GRILLE_MODIFIER
+  GRILLE_FIGER
+
+  // Évaluateurs / accès
+  EVALUATEUR_CREER
+  EVALUATEUR_SUSPENDRE
+  EVALUATEUR_REACTIVER
+  EVALUATEUR_AFFECTER
+  EVALUATEUR_REAFFECTER
+  EVALUATEUR_DESAFFECTER
+
+  // Disponibilités & extensions
+  DISPONIBILITE_REPONDRE
+  EXTENSION_ACCORDER
+  EXTENSION_REFUSER
+
+  // Évaluations
+  EVALUATION_BROUILLON
+  EVALUATION_SOUMETTRE
+  EVALUATION_REOUVRIR
+
+  // Notifications internes
+  NOTIFICATION_ENVOYER
+}
+
+enum TypeCible {
+  SESSION
+  OFFRE
+  GRILLE
+  GRILLE_VERSION
+  EVALUATEUR
+  AFFECTATION
+  DISPONIBILITE
+  EXTENSION
+  EVALUATION
+  NOTE
+}
+
+enum StatutAction {
+  REUSSI
+  ECHEC
+}
+
+// -----------------------------------------------------------------------------
+// GRILLES (versionnées + figées)
+// -----------------------------------------------------------------------------
+
+model GrilleEvaluation {
+  id        String          @id @default(cuid())
+  nom       String
+  estDefaut Boolean         @default(false)
+  versions  GrilleVersion[]
+  creeLe    DateTime        @default(now())
+
+  @@index([estDefaut])
+}
+
+model GrilleVersion {
+  id       String          @id @default(cuid())
+  grilleId String
+  version  Int
+  figeeLe  DateTime? // si non null => non éditable
+  sections SectionGrille[]
+
+  grille GrilleEvaluation @relation(fields: [grilleId], references: [id])
+
+  @@unique([grilleId, version])
+  @@index([figeeLe])
+}
+
+model SectionGrille {
+  id              String          @id @default(cuid())
+  grilleVersionId String
+  nom             String
+  poids           Int // >=0 ; pondération section
+  criteres        CritereGrille[]
+
+  grilleVersion GrilleVersion @relation(fields: [grilleVersionId], references: [id])
+}
+
+model CritereGrille {
+  id        String @id @default(cuid())
+  sectionId String
+  libelle   String
+  poids     Int // 0 => masqué côté évaluateur
+  pointsMax Int?
+
+  section SectionGrille @relation(fields: [sectionId], references: [id])
+
+  @@unique([sectionId, libelle])
+}
+
+// -----------------------------------------------------------------------------
+// SESSIONS & OFFRES
+// -----------------------------------------------------------------------------
+
+model SessionEvaluation {
+  id              String        @id @default(cuid())
+  nom             String
+  dateDebut       DateTime
+  dateFin         DateTime
+  seuilSelection  Int // 0..100 (%)
+  etat            StatutSession @default(PLANIFIEE)
+  grilleVersionId String // doit pointer une version figee
+  creeLe          DateTime      @default(now())
+
+  grilleVersion  GrilleVersion   @relation(fields: [grilleVersionId], references: [id])
+  offres         SessionOffre[]
+  affectations   Affectation[]
+  disponibilites Disponibilite[]
+  extensions     Extension[]
+  evaluations    Evaluation[]
+
+  @@index([etat, dateFin])
+  @@index([grilleVersionId])
+}
+
+model SessionOffre {
+  id              String @id @default(cuid())
+  sessionId       String
+  offreId         String // -> DemandeSubvention.id
+  codeAnonyme     String // identifiant visible côté évaluateur
+  moyenneScorePct Float? // dénormalisation pour dashboards
+
+  session SessionEvaluation @relation(fields: [sessionId], references: [id])
+  offre   DemandeSubvention @relation(fields: [offreId], references: [id])
+
+  @@unique([sessionId, offreId])
+  @@unique([sessionId, codeAnonyme])
+  @@index([sessionId])
+}
+
+// -----------------------------------------------------------------------------
+// AFFECTATIONS / DISPONIBILITES / EXTENSIONS
+// -----------------------------------------------------------------------------
+
+model Affectation {
+  id           String            @id @default(cuid())
+  sessionId    String
+  offreId      String
+  evaluateurId String
+  statut       StatutAffectation @default(EN_ATTENTE)
+  creeLe       DateTime          @default(now())
+
+  session    SessionEvaluation @relation(fields: [sessionId], references: [id])
+  offre      DemandeSubvention @relation(fields: [offreId], references: [id])
+  evaluateur Utilisateur       @relation(fields: [evaluateurId], references: [id])
+
+  @@unique([sessionId, offreId, evaluateurId])
+  @@index([statut])
+  @@index([sessionId, evaluateurId])
+  @@index([sessionId, offreId])
+}
+
+model Disponibilite {
+  id           String              @id @default(cuid())
+  sessionId    String
+  evaluateurId String
+  statut       StatutDisponibilite @default(EN_ATTENTE)
+  reponduLe    DateTime?
+
+  session    SessionEvaluation @relation(fields: [sessionId], references: [id])
+  evaluateur Utilisateur       @relation(fields: [evaluateurId], references: [id])
+
+  @@unique([sessionId, evaluateurId])
+}
+
+model Extension {
+  id            String   @id @default(cuid())
+  sessionId     String
+  evaluateurId  String
+  minutes       Int      @default(60) // +1h max
+  accordeeParId String
+  accordeeLe    DateTime @default(now())
+  expireLe      DateTime
+
+  session     SessionEvaluation @relation(fields: [sessionId], references: [id])
+  evaluateur  Utilisateur       @relation(fields: [evaluateurId], references: [id])
+  accordeePar Utilisateur       @relation("ExtensionAccordeePar", fields: [accordeeParId], references: [id])
+
+  @@unique([sessionId, evaluateurId]) // 1 extension / évaluateur / session
+  @@index([sessionId, evaluateurId, expireLe])
+}
+
+// -----------------------------------------------------------------------------
+// EVALUATIONS + NOTES (avec verrouillage version)
+// -----------------------------------------------------------------------------
+
+model Evaluation {
+  id              String @id @default(cuid())
+  sessionId       String
+  offreId         String // -> DemandeSubvention.id
+  evaluateurId    String
+  grilleVersionId String // verrouille la version utilisée
+
+  // Nouveaux champs V2
+  statut      StatutEvaluation @default(BROUILLON)
+  scorePct    Int? // 0..100 (arrondi)
+  commentaire String?
+  soumiseLe   DateTime?
+
+  // Champs "legacy" conservés (compatibilité)
+  score        Float?
+  commentaires String?
+  criteres     Json?
+  creeLe       DateTime @default(now())
+  misAJourLe   DateTime @updatedAt
+
+  notes NoteEvaluation[]
+
+  session       SessionEvaluation @relation(fields: [sessionId], references: [id])
+  offre         DemandeSubvention @relation(fields: [offreId], references: [id])
+  evaluateur    Utilisateur       @relation(fields: [evaluateurId], references: [id])
+  grilleVersion GrilleVersion     @relation(fields: [grilleVersionId], references: [id])
+
+  @@unique([sessionId, offreId, evaluateurId])
+  @@index([statut])
+  @@index([sessionId, evaluateurId])
+  @@index([sessionId, offreId])
+  @@index([grilleVersionId])
+}
+
+model NoteEvaluation {
+  id           String @id @default(cuid())
+  evaluationId String
+  critereId    String
+  valeurPct    Int // 0..100
+
+  evaluation Evaluation    @relation(fields: [evaluationId], references: [id])
+  critere    CritereGrille @relation(fields: [critereId], references: [id])
+
+  @@unique([evaluationId, critereId])
+  @@index([critereId])
+}
+
+// -----------------------------------------------------------------------------
+// NOTIFS & JOURNAL (audit)
+// -----------------------------------------------------------------------------
+
+model NotificationInterne {
+  id             String   @id @default(cuid())
+  destinataireId String
+  envoyeParId    String
+  contexte       String // "SESSION", "AFFECTATION", "EXTENSION", "RAPPEL", ...
+  message        String
+  donnees        Json?
+  severite       String? // "INFO" | "AVERTISSEMENT" | "CRITIQUE"
+  creeLe         DateTime @default(now())
+
+  destinataire Utilisateur @relation("NotifDest", fields: [destinataireId], references: [id])
+  envoyePar    Utilisateur @relation("NotifSender", fields: [envoyeParId], references: [id])
+
+  @@index([destinataireId, creeLe])
+  @@index([contexte, creeLe])
+}
+
+model JournalAction {
+  id String @id @default(cuid())
+
+  utilisateurId String
+  typeAction    TypeAction
+  typeCible     TypeCible?
+  idCible       String?
+  description   String?
+  details       Json?
+  resultat      StatutAction @default(REUSSI)
+
+  ip        String?
+  userAgent String?
+  creeLe    DateTime @default(now())
+
+  utilisateur Utilisateur @relation(fields: [utilisateurId], references: [id])
+
+  @@index([creeLe])
+  @@index([typeAction, creeLe])
+  @@index([typeCible, idCible])
+  @@index([utilisateurId, creeLe])
 }
