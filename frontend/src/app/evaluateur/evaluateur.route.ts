@@ -13,27 +13,27 @@ export const evaluateurRoutes: Routes = [
   {
     path: 'dashboard',
     loadComponent: () => import('./dashboard/dashboard').then((m) => m.EvaluateurDashboard),
-    canActivate: [evaluateurGuard],
+    // canActivate: [evaluateurGuard],
   },
   {
     path: 'projets',
     loadComponent: () => import('./projets/projets').then((m) => m.EvaluateurProjets),
-    canActivate: [evaluateurGuard],
+    // canActivate: [evaluateurGuard],
   },
   {
     path: 'evaluations',
     loadComponent: () => import('./evaluations/evaluations').then((m) => m.EvaluateurEvaluations),
-    canActivate: [evaluateurGuard],
+    // canActivate: [evaluateurGuard],
   },
   {
     path: 'evaluations/:id',
     loadComponent: () => import('./evaluations/evaluations').then((m) => m.EvaluateurEvaluations),
-    canActivate: [evaluateurGuard],
+    // canActivate: [evaluateurGuard],
   },
   {
     path: 'aide-support',
     loadComponent: () => import('./aide-support/aide-support').then((m) => m.EvaluateurAideSupport),
-    canActivate: [evaluateurGuard],
+    // canActivate: [evaluateurGuard],
   },
 
   // Redirection par défaut
