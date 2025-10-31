@@ -89,12 +89,17 @@ export class Evaluateurs implements OnInit {
   /* ------------------------- ACTIONS ------------------------- */
 
   creerEvaluateur(): void {
-    if (
-      !this.nouvelEvaluateur.email ||
-      !this.nouvelEvaluateur.nom ||
-      !this.nouvelEvaluateur.prenom
-    ) {
-      this.toastr.warning('Tous les champs sont requis');
+    // Vérification des champs vides
+    if (!this.nouvelEvaluateur.email) {
+      this.toastr.warning("L'adresse email est requise", 'Champ manquant');
+      return;
+    }
+    if (!this.nouvelEvaluateur.nom) {
+      this.toastr.warning('Le nom est requis', 'Champ manquant');
+      return;
+    }
+    if (!this.nouvelEvaluateur.prenom) {
+      this.toastr.warning('Le prénom est requis', 'Champ manquant');
       return;
     }
 
@@ -105,10 +110,20 @@ export class Evaluateurs implements OnInit {
       prenom: this.nouvelEvaluateur.prenom.trim(),
     };
 
-    // Validation basique du format email
+    // Validation du format email
     const emailRegex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,6}$/;
     if (!emailRegex.test(evaluateur.email)) {
-      this.toastr.error('Adresse email invalide');
+      this.toastr.error("Le format de l'adresse email n'est pas valide", 'Format email incorrect');
+      return;
+    }
+
+    // Validation de la longueur des champs
+    if (evaluateur.nom.length < 2) {
+      this.toastr.warning('Le nom doit contenir au moins 2 caractères', 'Nom trop court');
+      return;
+    }
+    if (evaluateur.prenom.length < 2) {
+      this.toastr.warning('Le prénom doit contenir au moins 2 caractères', 'Prénom trop court');
       return;
     }
 
@@ -128,38 +143,67 @@ export class Evaluateurs implements OnInit {
 
   approuverExtension(e: Evaluateur): void {
     const idSession = getSessionCourante();
-    if (!idSession) return alert('Sélectionnez d’abord une session.');
+    if (!idSession) {
+      this.toastr.warning('Veuillez sélectionner une session avant de continuer');
+      return;
+    }
     this.api.extension({ idSession, idEvaluateur: e.id, minutes: 60 }).subscribe({
       next: () => {
         e.extensionStatut = 'Autorisée';
-        alert(`✅ Extension autorisée pour ${e.prenom} ${e.nom}`);
+        this.toastr.success(`Extension autorisée pour ${e.prenom} ${e.nom}`, 'Extension accordée');
       },
-      error: (er) => alert(er?.error?.message || 'Erreur extension'),
+      error: (er) => {
+        this.toastr.error(
+          er?.error?.message || "Erreur lors de l'extension",
+          "Échec de l'extension"
+        );
+        console.error('Erreur extension:', er);
+      },
     });
   }
 
   refuserExtension(e: Evaluateur): void {
     const idSession = getSessionCourante();
-    if (!idSession) return alert('Sélectionnez d’abord une session.');
+    if (!idSession) {
+      this.toastr.warning('Veuillez sélectionner une session avant de continuer');
+      return;
+    }
     this.api.extension({ idSession, idEvaluateur: e.id, minutes: 0, refuse: true }).subscribe({
       next: () => {
         e.extensionStatut = 'Refusée';
-        alert(`❌ Extension refusée pour ${e.prenom} ${e.nom}`);
+        this.toastr.info(`Extension refusée pour ${e.prenom} ${e.nom}`, 'Extension refusée');
       },
-      error: (er) => alert(er?.error?.message || 'Erreur extension'),
+      error: (er) => {
+        this.toastr.error(
+          er?.error?.message || "Erreur lors du refus d'extension",
+          "Échec de l'opération"
+        );
+        console.error('Erreur refus extension:', er);
+      },
     });
   }
 
   supprimerEvaluateur(e: Evaluateur): void {
-    if (!confirm(`Supprimer ${e.prenom} ${e.nom} ?`)) return;
-    // Pas de DELETE prévu côté API -> on "suspend" l’utilisateur
+    if (!confirm(`Êtes-vous sûr de vouloir supprimer l'évaluateur ${e.prenom} ${e.nom} ?`)) {
+      return;
+    }
+    // Pas de DELETE prévu côté API -> on "suspend" l'utilisateur
     this.api.suspendre(e.id).subscribe({
       next: () => {
+        this.toastr.success(
+          `L'évaluateur ${e.prenom} ${e.nom} a été suspendu avec succès`,
+          'Évaluateur suspendu'
+        );
         // On recharge la liste pour refléter le statut
         this.chargerEvaluateurs();
-        alert(`✅ ${e.prenom} ${e.nom} suspendu.`);
       },
-      error: (er) => alert(er?.error?.message || 'Erreur suspension'),
+      error: (er) => {
+        this.toastr.error(
+          er?.error?.message || 'Une erreur est survenue lors de la suspension',
+          'Échec de la suspension'
+        );
+        console.error('Erreur suspension:', er);
+      },
     });
   }
 
