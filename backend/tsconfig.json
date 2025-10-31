@@ -5,11 +5,11 @@
     "outDir": "./dist",
 
     // Environment Settings
-    "module": "ES2020",
+    "module": "CommonJS",
     "target": "ES2020",
     "lib": ["ES2020", "ES2021.String"],
     "types": ["node"],
-    "moduleResolution": "bundler",
+    "moduleResolution": "node",
 
     // Other Outputs
     "sourceMap": true,

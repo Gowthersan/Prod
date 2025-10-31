@@ -30,6 +30,7 @@ export const environment = {
   // === CONFIGURATION API ===
   urlServer: API_BASE_URL,
   apiBaseUrl: `${API_BASE_URL}/api`,
+  apiBase: `${API_BASE_URL}/api`, // Alias pour compatibilité
 
   // === DOMAINES ===
   domains: {

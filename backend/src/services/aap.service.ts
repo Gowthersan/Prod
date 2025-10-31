@@ -1,7 +1,7 @@
-import prisma from '../config/db.js';
-import { AppError } from '../middlewares/error.middleware.js';
+import prisma from "../config/db.js";
+import { AppError } from "../middlewares/error.middleware.js";
 
-export class AAPService {
+class AAPService {
   /**
    * Créer un nouvel appel à projets
    */
@@ -13,41 +13,46 @@ export class AAPService {
         ...aapData,
         launchDate: new Date(aapData.launchDate),
         subventions: {
-          create: subventions?.map((subvention: any) => ({
-            name: subvention.name,
-            amountMin: subvention.amountMin,
-            amountMax: subvention.amountMax,
-            durationMaxMonths: subvention.durationMaxMonths,
-            deadlineNoteConceptuelle: new Date(subvention.deadlineNoteConceptuelle),
-            cycleSteps: {
-              create: subvention.cycle?.map((step: any, index: number) => ({
-                step: step.step,
-                dates: step.dates,
-                ordre: index + 1
-              })) || []
-            }
-          })) || []
+          create:
+            subventions?.map((subvention: any) => ({
+              name: subvention.name,
+              amountMin: subvention.amountMin,
+              amountMax: subvention.amountMax,
+              durationMaxMonths: subvention.durationMaxMonths,
+              deadlineNoteConceptuelle: new Date(
+                subvention.deadlineNoteConceptuelle
+              ),
+              cycleSteps: {
+                create:
+                  subvention.cycle?.map((step: any, index: number) => ({
+                    step: step.step,
+                    dates: step.dates,
+                    ordre: index + 1,
+                  })) || [],
+              },
+            })) || [],
         },
         thematiques: {
-          create: thematiques?.map((thematique: any) => ({
-            title: thematique.title,
-            bullets: thematique.bullets || [],
-            typeSubvention: thematique.typeSubvention
-          })) || []
-        }
+          create:
+            thematiques?.map((thematique: any) => ({
+              title: thematique.title,
+              bullets: thematique.bullets || [],
+              typeSubvention: thematique.typeSubvention,
+            })) || [],
+        },
       },
       include: {
         subventions: {
           include: {
             cycleSteps: {
               orderBy: {
-                ordre: 'asc'
-              }
-            }
-          }
+                ordre: "asc",
+              },
+            },
+          },
         },
-        thematiques: true
-      }
+        thematiques: true,
+      },
     });
 
     return aap;
@@ -64,16 +69,16 @@ export class AAPService {
           include: {
             cycleSteps: {
               orderBy: {
-                ordre: 'asc'
-              }
-            }
-          }
+                ordre: "asc",
+              },
+            },
+          },
         },
-        thematiques: true
+        thematiques: true,
       },
       orderBy: {
-        launchDate: 'desc'
-      }
+        launchDate: "desc",
+      },
     });
 
     return aaps;
@@ -90,17 +95,17 @@ export class AAPService {
           include: {
             cycleSteps: {
               orderBy: {
-                ordre: 'asc'
-              }
-            }
-          }
+                ordre: "asc",
+              },
+            },
+          },
         },
-        thematiques: true
-      }
+        thematiques: true,
+      },
     });
 
     if (!aap) {
-      throw new AppError('Appel à projets non trouvé.', 404);
+      throw new AppError("Appel à projets non trouvé.", 404);
     }
 
     return aap;
@@ -117,17 +122,17 @@ export class AAPService {
           include: {
             cycleSteps: {
               orderBy: {
-                ordre: 'asc'
-              }
-            }
-          }
+                ordre: "asc",
+              },
+            },
+          },
         },
-        thematiques: true
-      }
+        thematiques: true,
+      },
     });
 
     if (!aap) {
-      throw new AppError('Appel à projets non trouvé.', 404);
+      throw new AppError("Appel à projets non trouvé.", 404);
     }
 
     return aap;
@@ -138,11 +143,11 @@ export class AAPService {
    */
   async updateAAP(id: string, data: any) {
     const existingAAP = await prisma.appelProjets.findUnique({
-      where: { id }
+      where: { id },
     });
 
     if (!existingAAP) {
-      throw new AppError('Appel à projets non trouvé.', 404);
+      throw new AppError("Appel à projets non trouvé.", 404);
     }
 
     const { subventions, thematiques, ...aapData } = data;
@@ -152,20 +157,20 @@ export class AAPService {
       where: { id },
       data: {
         ...aapData,
-        ...(aapData.launchDate && { launchDate: new Date(aapData.launchDate) })
+        ...(aapData.launchDate && { launchDate: new Date(aapData.launchDate) }),
       },
       include: {
         subventions: {
           include: {
             cycleSteps: {
               orderBy: {
-                ordre: 'asc'
-              }
-            }
-          }
+                ordre: "asc",
+              },
+            },
+          },
         },
-        thematiques: true
-      }
+        thematiques: true,
+      },
     });
 
     return updatedAAP;
@@ -176,18 +181,18 @@ export class AAPService {
    */
   async toggleAAPStatus(id: string) {
     const aap = await prisma.appelProjets.findUnique({
-      where: { id }
+      where: { id },
     });
 
     if (!aap) {
-      throw new AppError('Appel à projets non trouvé.', 404);
+      throw new AppError("Appel à projets non trouvé.", 404);
     }
 
     const updatedAAP = await prisma.appelProjets.update({
       where: { id },
       data: {
-        isActive: !aap.isActive
-      }
+        isActive: !aap.isActive,
+      },
     });
 
     return updatedAAP;
@@ -198,19 +203,19 @@ export class AAPService {
    */
   async deleteAAP(id: string) {
     const aap = await prisma.appelProjets.findUnique({
-      where: { id }
+      where: { id },
     });
 
     if (!aap) {
-      throw new AppError('Appel à projets non trouvé.', 404);
+      throw new AppError("Appel à projets non trouvé.", 404);
     }
 
     // Supprimer l'AAP (cascade delete pour subventions et thématiques)
     await prisma.appelProjets.delete({
-      where: { id }
+      where: { id },
     });
 
-    return { message: 'Appel à projets supprimé avec succès.' };
+    return { message: "Appel à projets supprimé avec succès." };
   }
 
   /**
@@ -219,13 +224,15 @@ export class AAPService {
   async getAllTypeOrganisations() {
     // TypeOrganisation est un enum, retournons les valeurs possibles
     return [
-      'ASSOCIATION',
-      'ONG',
-      'COMMUNAUTE',
-      'COOPERATIVE',
-      'ENTREPRISE',
-      'GROUPEMENT',
-      'AUTRE'
+      "ASSOCIATION",
+      "ONG",
+      "COMMUNAUTE",
+      "COOPERATIVE",
+      "ENTREPRISE",
+      "GROUPEMENT",
+      "AUTRE",
     ];
   }
 }
+
+export default new AAPService();

@@ -14,6 +14,7 @@ import organisationRoutes from './routes/organisation.routes.js';
 import sondageRoutes from './routes/sondage.routes.js';
 import supportRoutes from './routes/support.routes.js';
 import { verifyEmailConfig } from './utils/mailer.js';
+import { evaluateursRouter } from './routes/evaluateurs.route.js';
 
 // 🔹 Charger les variables d'environnement
 dotenv.config();
@@ -119,6 +120,9 @@ app.use('/api/aap', aapRoutes);
 app.use('/api/demandes', demandeSubventionRoutes);
 app.use('/api/sondage', sondageRoutes);
 app.use('/api/support', supportRoutes);
+// Routes Admin - Evaluateurs
+app.use('/api/admin/evaluateurs', evaluateursRouter);
+
 
 /* -------------------------------------------------------------------------- */
 /*                     🚧 Gestion des erreurs et routes 404                   */
@@ -142,5 +146,7 @@ app.listen(PORT, async () => {
   await verifyEmailConfig();
   console.log('📨 Configuration email vérifiée avec succès ✅\n');
 });
+
+
 
 export default app;

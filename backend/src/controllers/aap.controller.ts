@@ -1,156 +1,115 @@
-import { NextFunction, Request, Response } from 'express';
-import { AAPService } from '../services/aap.service.js';
-
-const aapService = new AAPService();
+import { Request, Response } from "express";
+import AAPService from "../services/aap.service";
 
 export class AAPController {
-  /**
-   * POST /api/aap
-   * Créer un nouvel appel à projets (admin only)
-   */
-  static async createAAP(req: Request, res: Response, next: NextFunction) {
+  static async getAllAAPs(req: Request, res: Response) {
     try {
-      const aap = await aapService.createAAP(req.body);
-
-      res.status(201).json({
-        message: 'Appel à projets créé avec succès.',
-        aap
-      });
-    } catch (error) {
-      next(error);
-    }
-  }
-
-  /**
-   * GET /api/aap
-   * Récupérer tous les appels à projets
-   */
-  static async getAllAAPs(req: Request, res: Response, next: NextFunction) {
-    try {
-      const includeInactive = req.query.includeInactive === 'true';
-      const aaps = await aapService.getAllAAPs(includeInactive);
-
+      const aaps = await AAPService.getAllAAPs();
       res.json(aaps);
     } catch (error) {
-      next(error);
+      res
+        .status(500)
+        .json({ error: "Erreur lors de la récupération des AAPs" });
     }
   }
 
-  /**
-   * GET /api/aap/:id
-   * Récupérer un appel à projets par ID
-   */
-  static async getAAPById(req: Request, res: Response, next: NextFunction) {
+  static async getAAPById(req: Request, res: Response) {
     try {
-      const { id } = req.params;
-      const aap = await aapService.getAAPById(id!);
-
-      res.json(aap);
+      const aap = await AAPService.getAAPById(req.params.id);
+      if (aap) {
+        res.json(aap);
+      } else {
+        res.status(404).json({ error: "AAP non trouvé" });
+      }
     } catch (error) {
-      next(error);
+      res
+        .status(500)
+        .json({ error: "Erreur lors de la récupération de l'AAP" });
     }
   }
 
-  /**
-   * GET /api/aap/code/:code
-   * Récupérer un appel à projets par code
-   */
-  static async getAAPByCode(req: Request, res: Response, next: NextFunction) {
+  static async getAAPByCode(req: Request, res: Response) {
     try {
-      const { code } = req.params;
-      const aap = await aapService.getAAPByCode(code!);
-
-      res.json(aap);
+      const aap = await AAPService.getAAPByCode(req.params.code);
+      if (aap) {
+        res.json(aap);
+      } else {
+        res.status(404).json({ error: "AAP non trouvé" });
+      }
     } catch (error) {
-      next(error);
+      res
+        .status(500)
+        .json({ error: "Erreur lors de la récupération de l'AAP" });
     }
   }
 
-  /**
-   * PUT /api/aap/:id
-   * Mettre à jour un appel à projets (admin only)
-   */
-  static async updateAAP(req: Request, res: Response, next: NextFunction) {
+  static async createAAP(req: Request, res: Response) {
     try {
-      const { id } = req.params;
-      const aap = await aapService.updateAAP(id!, req.body);
-
-      res.json({
-        message: 'Appel à projets mis à jour avec succès.',
-        aap
-      });
+      const aap = await AAPService.createAAP(req.body);
+      res.status(201).json(aap);
     } catch (error) {
-      next(error);
+      res.status(500).json({ error: "Erreur lors de la création de l'AAP" });
     }
   }
 
-  /**
-   * PATCH /api/aap/:id/toggle
-   * Activer/Désactiver un appel à projets (admin only)
-   */
-  static async toggleAAPStatus(req: Request, res: Response, next: NextFunction) {
+  static async updateAAP(req: Request, res: Response) {
     try {
-      const { id } = req.params;
-      const aap = await aapService.toggleAAPStatus(id!);
-
-      res.json({
-        message: `Appel à projets ${aap.isActive ? 'activé' : 'désactivé'} avec succès.`,
-        aap
-      });
+      const aap = await AAPService.updateAAP(req.params.id, req.body);
+      if (aap) {
+        res.json(aap);
+      } else {
+        res.status(404).json({ error: "AAP non trouvé" });
+      }
     } catch (error) {
-      next(error);
+      res.status(500).json({ error: "Erreur lors de la mise à jour de l'AAP" });
     }
   }
 
-  /**
-   * DELETE /api/aap/:id
-   * Supprimer un appel à projets (admin only)
-   */
-  static async deleteAAP(req: Request, res: Response, next: NextFunction) {
+  static async deleteAAP(req: Request, res: Response) {
     try {
-      const { id } = req.params;
-      const result = await aapService.deleteAAP(id!);
-
-      res.json(result);
+      await AAPService.deleteAAP(req.params.id);
+      res.status(204).send();
     } catch (error) {
-      next(error);
+      res.status(500).json({ error: "Erreur lors de la suppression de l'AAP" });
     }
   }
 
-  /**
-   * GET /api/aap/types/organisations
-   * Récupérer les types d'organisations
-   */
-  static async getAllTypeOrganisations(req: Request, res: Response, next: NextFunction) {
+  static async toggleAAPStatus(req: Request, res: Response) {
     try {
-      const types = await aapService.getAllTypeOrganisations();
+      const aap = await AAPService.toggleAAPStatus(req.params.id);
+      if (aap) {
+        res.json(aap);
+      } else {
+        res.status(404).json({ error: "AAP non trouvé" });
+      }
+    } catch (error) {
+      res
+        .status(500)
+        .json({ error: "Erreur lors du changement de statut de l'AAP" });
+    }
+  }
 
+  static async getAllTypeOrganisations(req: Request, res: Response) {
+    try {
+      const types = await AAPService.getAllTypeOrganisations();
       res.json(types);
     } catch (error) {
-      next(error);
+      res
+        .status(500)
+        .json({
+          error: "Erreur lors de la récupération des types d'organisations",
+        });
     }
   }
 
-  /**
-   * POST /api/aap/types/organisations
-   * Créer un type d'organisation (admin only)
-   */
-  static async createTypeOrganisation(req: Request, res: Response, next: NextFunction) {
+  static async createTypeOrganisation(req: Request, res: Response) {
     try {
-      const { nom } = req.body;
-
-      if (!nom) {
-        return res.status(400).json({ error: "Le nom du type d'organisation est requis." });
-      }
-
-      const type = await aapService.createTypeOrganisation(nom);
-
-      res.status(201).json({
-        message: "Type d'organisation créé avec succès.",
-        type
-      });
+      const type = await AAPService.createTypeOrganisation(req.body);
+      res.status(201).json(type);
     } catch (error) {
-      next(error);
+      res
+        .status(500)
+        .json({ error: "Erreur lors de la création du type d'organisation" });
     }
   }
 }
