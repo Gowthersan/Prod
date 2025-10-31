@@ -1,320 +1,220 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
+import { HttpClientModule } from '@angular/common/http';
+import { EvaluateursApi, Evaluateur, CreerEvaluateurDTO } from '../../services/evaluateurs.api';
+import { environment } from '../../../environments/environment';
+import { DemandeSubventionService } from '../../services/api/demande-subvention.service';
+import { ToastrService } from 'ngx-toastr';
+import { provideToastr } from 'ngx-toastr';
+import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 
-/**
- * Interface pour un évaluateur
- */
-interface Evaluateur {
-  id: string;
-  nom: string;
-  prenom: string;
-  email: string;
-  projetsAttribues: number;
-  projetsTermines: number;
-  delaiRestant: string;
-  extensionStatut: 'Demandée' | 'Autorisée' | 'Refusée' | null;
-}
+// ⚠️ Id de session “courante” pour les actions d’extension.
+//   - Récupère-le depuis la route / le store / une sélection admin.
+//   - En attendant, on lit un fallback dans localStorage.
+const getSessionCourante = () => localStorage.getItem('sessionCouranteId') || '';
 
-/**
- * Interface pour créer un nouvel évaluateur
- */
-interface NouvelEvaluateur {
-  nom: string;
-  prenom: string;
-  email: string;
-}
+// @ts-ignore
+import { ToastrModule } from 'ngx-toastr';
 
 @Component({
   selector: 'app-evaluateurs',
-  imports: [CommonModule, FormsModule, RouterModule],
+  standalone: true,
+  imports: [CommonModule, FormsModule, RouterModule, HttpClientModule],
   templateUrl: './evaluateurs.html',
-  styleUrls: ['./evaluateurs.css']
+  styleUrls: ['./evaluateurs.css'],
 })
 export class Evaluateurs implements OnInit {
-  // Statistiques de la sidebar
-  totalProjets = 60;
-  totalAAP = 3;
-
-  // Statistiques des évaluateurs
-  totalEvaluateurs = 20;
-  evaluateursActifs = 6;
+  // Stats
+  totalProjets = 0;
+  totalAAP = 0;
+  totalEvaluateurs = 0;
+  evaluateursActifs = 0;
 
   // Liste des évaluateurs
-  evaluateurs: Evaluateur[] = [
-    {
-      id: '1',
-      nom: 'BIANG',
-      prenom: 'Kenny',
-      email: 'kenny.biang@example.com',
-      projetsAttribues: 10,
-      projetsTermines: 4,
-      delaiRestant: '1h30',
-      extensionStatut: 'Demandée'
-    },
-    {
-      id: '2',
-      nom: 'OBAME',
-      prenom: 'Noemy',
-      email: 'noemy.obame@example.com',
-      projetsAttribues: 5,
-      projetsTermines: 5,
-      delaiRestant: 'Terminé',
-      extensionStatut: 'Autorisée'
-    },
-    {
-      id: '3',
-      nom: 'SACAMA',
-      prenom: 'Gerson',
-      email: 'gerson.sacama@example.com',
-      projetsAttribues: 10,
-      projetsTermines: 5,
-      delaiRestant: '3h23',
-      extensionStatut: 'Refusée'
-    },
-    {
-      id: '4',
-      nom: 'RAPONTHOMBO',
-      prenom: 'Georges',
-      email: 'georges.raponthombo@example.com',
-      projetsAttribues: 5,
-      projetsTermines: 5,
-      delaiRestant: 'Terminé',
-      extensionStatut: 'Autorisée'
-    },
-    {
-      id: '5',
-      nom: 'MINSTSA',
-      prenom: 'Morel',
-      email: 'morel.minstsa@example.com',
-      projetsAttribues: 5,
-      projetsTermines: 5,
-      delaiRestant: 'Terminé',
-      extensionStatut: 'Autorisée'
-    },
-    {
-      id: '6',
-      nom: 'MINSTSA',
-      prenom: 'Morel',
-      email: 'morel.minstsa@example.com',
-      projetsAttribues: 5,
-      projetsTermines: 5,
-      delaiRestant: 'Terminé',
-      extensionStatut: 'Autorisée'
-    }
-  ];
+  evaluateurs: Evaluateur[] = [];
+  filtreActifs = true;
 
-  // Modal
+  // État du modal
   isModalOuverte = false;
-  nouvelEvaluateur: NouvelEvaluateur = {
-    nom: '',
-    prenom: '',
-    email: ''
-  };
+  nouvelEvaluateur: CreerEvaluateurDTO = { nom: '', prenom: '', email: '' };
 
-  constructor(private router: Router) {}
+  // UI
+  chargement = false;
+
+  private demandeService = inject(DemandeSubventionService);
+
+  private toastr = inject(ToastrService);
+
+  constructor(private router: Router, private api: EvaluateursApi) {}
 
   ngOnInit(): void {
-    // Initialisation du composant
-    console.log('✅ Composant Evaluateurs initialisé');
-    console.log('📊 Nombre d\'évaluateurs:', this.evaluateurs.length);
+    this.chargerEvaluateurs();
+    this.chargerStatistiques();
   }
 
   /**
-   * Ouvrir le modal de création d'évaluateur
+   * Charger les statistiques des projets et AAP
    */
+  private chargerStatistiques(): void {
+    this.demandeService.obtenirTout().subscribe({
+      next: (response) => {
+        if (response?.data) {
+          this.totalProjets = response.data.length;
+          const aapUniques = new Set(response.data.map((p) => p.appelProjets?.id).filter(Boolean));
+          this.totalAAP = aapUniques.size;
+          this.toastr.info(
+            `Statistiques mises à jour : ${this.totalProjets} projets sur ${this.totalAAP} AAP`
+          );
+        }
+      },
+      error: (err) => {
+        console.error('Erreur lors du chargement des statistiques:', err);
+        this.toastr.error('Erreur lors du chargement des statistiques');
+      },
+    });
+  }
+
+  /* -------------------------- MODAL -------------------------- */
   ouvrirModal(): void {
     this.isModalOuverte = true;
-    console.log('📝 Ouverture du modal de création');
   }
 
-  /**
-   * Fermer le modal
-   */
   fermerModal(): void {
     this.isModalOuverte = false;
-    // Réinitialiser le formulaire
-    this.nouvelEvaluateur = {
-      nom: '',
-      prenom: '',
-      email: ''
-    };
-    console.log('❌ Fermeture du modal');
+    this.nouvelEvaluateur = { nom: '', prenom: '', email: '' };
   }
 
-  /**
-   * Créer un nouvel évaluateur
-   */
+  /* ------------------------- ACTIONS ------------------------- */
+
   creerEvaluateur(): void {
-    console.log('➕ Création d\'un nouvel évaluateur:', this.nouvelEvaluateur);
-
-    // Générer un ID unique
-    const nouvelId = (this.evaluateurs.length + 1).toString();
-
-    // Créer le nouvel évaluateur
-    const evaluateur: Evaluateur = {
-      id: nouvelId,
-      nom: this.nouvelEvaluateur.nom,
-      prenom: this.nouvelEvaluateur.prenom,
-      email: this.nouvelEvaluateur.email,
-      projetsAttribues: 0,
-      projetsTermines: 0,
-      delaiRestant: '-',
-      extensionStatut: null
-    };
-
-    // Ajouter à la liste
-    this.evaluateurs.push(evaluateur);
-
-    // Mettre à jour les statistiques
-    this.totalEvaluateurs++;
-
-    // Fermer le modal
-    this.fermerModal();
-
-    // Afficher un message de succès
-    alert(`✅ Évaluateur ${evaluateur.prenom} ${evaluateur.nom} créé avec succès !`);
-
-    console.log('✅ Évaluateur créé:', evaluateur);
-    console.log('📊 Total évaluateurs:', this.totalEvaluateurs);
-
-    // TODO: Appeler l'API backend pour créer l'évaluateur
-    // this.evaluateurService.creer(this.nouvelEvaluateur).subscribe({
-    //   next: (response) => {
-    //     console.log('✅ Évaluateur créé:', response);
-    //     this.chargerEvaluateurs();
-    //   },
-    //   error: (error) => {
-    //     console.error('❌ Erreur:', error);
-    //     alert('Erreur lors de la création');
-    //   }
-    // });
-  }
-
-  /**
-   * Approuver une extension de délai
-   */
-  approuverExtension(evaluateur: Evaluateur): void {
-    console.log('✅ Approbation extension pour:', evaluateur.prenom, evaluateur.nom);
-
-    // Mettre à jour le statut
-    evaluateur.extensionStatut = 'Autorisée';
-
-    // Afficher un message
-    alert(`✅ Extension approuvée pour ${evaluateur.prenom} ${evaluateur.nom}`);
-
-    // TODO: Appeler l'API backend
-    // this.evaluateurService.approuverExtension(evaluateur.id).subscribe({
-    //   next: () => {
-    //     console.log('✅ Extension approuvée');
-    //     this.chargerEvaluateurs();
-    //   },
-    //   error: (error) => {
-    //     console.error('❌ Erreur:', error);
-    //   }
-    // });
-  }
-
-  /**
-   * Refuser une extension de délai
-   */
-  refuserExtension(evaluateur: Evaluateur): void {
-    console.log('❌ Refus extension pour:', evaluateur.prenom, evaluateur.nom);
-
-    // Mettre à jour le statut
-    evaluateur.extensionStatut = 'Refusée';
-
-    // Afficher un message
-    alert(`❌ Extension refusée pour ${evaluateur.prenom} ${evaluateur.nom}`);
-
-    // TODO: Appeler l'API backend
-    // this.evaluateurService.refuserExtension(evaluateur.id).subscribe({
-    //   next: () => {
-    //     console.log('✅ Extension refusée');
-    //     this.chargerEvaluateurs();
-    //   },
-    //   error: (error) => {
-    //     console.error('❌ Erreur:', error);
-    //   }
-    // });
-  }
-
-  /**
-   * Supprimer un évaluateur
-   */
-  supprimerEvaluateur(evaluateur: Evaluateur): void {
-    // Demander confirmation
-    const confirmation = confirm(
-      `Êtes-vous sûr de vouloir supprimer ${evaluateur.prenom} ${evaluateur.nom} ?`
-    );
-
-    if (!confirmation) {
+    if (
+      !this.nouvelEvaluateur.email ||
+      !this.nouvelEvaluateur.nom ||
+      !this.nouvelEvaluateur.prenom
+    ) {
+      this.toastr.warning('Tous les champs sont requis');
       return;
     }
 
-    console.log('🗑️ Suppression de:', evaluateur.prenom, evaluateur.nom);
+    // Nettoyage des données
+    const evaluateur = {
+      email: this.nouvelEvaluateur.email.trim(),
+      nom: this.nouvelEvaluateur.nom.trim(),
+      prenom: this.nouvelEvaluateur.prenom.trim(),
+    };
 
-    // Supprimer de la liste
-    const index = this.evaluateurs.findIndex(e => e.id === evaluateur.id);
-    if (index !== -1) {
-      this.evaluateurs.splice(index, 1);
-
-      // Mettre à jour les statistiques
-      this.totalEvaluateurs--;
-
-      // Afficher un message
-      alert(`✅ Évaluateur ${evaluateur.prenom} ${evaluateur.nom} supprimé avec succès`);
-
-      console.log('✅ Évaluateur supprimé');
-      console.log('📊 Total évaluateurs:', this.totalEvaluateurs);
+    // Validation basique du format email
+    const emailRegex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,6}$/;
+    if (!emailRegex.test(evaluateur.email)) {
+      this.toastr.error('Adresse email invalide');
+      return;
     }
 
-    // TODO: Appeler l'API backend
-    // this.evaluateurService.supprimer(evaluateur.id).subscribe({
-    //   next: () => {
-    //     console.log('✅ Évaluateur supprimé');
-    //     this.chargerEvaluateurs();
-    //   },
-    //   error: (error) => {
-    //     console.error('❌ Erreur:', error);
-    //     alert('Erreur lors de la suppression');
-    //   }
-    // });
+    this.api.creer(evaluateur).subscribe({
+      next: (response) => {
+        console.log('Évaluateur créé:', response);
+        this.fermerModal();
+        this.chargerEvaluateurs();
+        this.toastr.success('Évaluateur créé avec succès');
+      },
+      error: (err) => {
+        console.error('Erreur lors de la création:', err);
+        this.toastr.error(err?.error?.message || "Erreur lors de la création de l'évaluateur");
+      },
+    });
   }
 
-  /**
-   * Se déconnecter
-   */
+  approuverExtension(e: Evaluateur): void {
+    const idSession = getSessionCourante();
+    if (!idSession) return alert('Sélectionnez d’abord une session.');
+    this.api.extension({ idSession, idEvaluateur: e.id, minutes: 60 }).subscribe({
+      next: () => {
+        e.extensionStatut = 'Autorisée';
+        alert(`✅ Extension autorisée pour ${e.prenom} ${e.nom}`);
+      },
+      error: (er) => alert(er?.error?.message || 'Erreur extension'),
+    });
+  }
+
+  refuserExtension(e: Evaluateur): void {
+    const idSession = getSessionCourante();
+    if (!idSession) return alert('Sélectionnez d’abord une session.');
+    this.api.extension({ idSession, idEvaluateur: e.id, minutes: 0, refuse: true }).subscribe({
+      next: () => {
+        e.extensionStatut = 'Refusée';
+        alert(`❌ Extension refusée pour ${e.prenom} ${e.nom}`);
+      },
+      error: (er) => alert(er?.error?.message || 'Erreur extension'),
+    });
+  }
+
+  supprimerEvaluateur(e: Evaluateur): void {
+    if (!confirm(`Supprimer ${e.prenom} ${e.nom} ?`)) return;
+    // Pas de DELETE prévu côté API -> on "suspend" l’utilisateur
+    this.api.suspendre(e.id).subscribe({
+      next: () => {
+        // On recharge la liste pour refléter le statut
+        this.chargerEvaluateurs();
+        alert(`✅ ${e.prenom} ${e.nom} suspendu.`);
+      },
+      error: (er) => alert(er?.error?.message || 'Erreur suspension'),
+    });
+  }
+
   logout(): void {
-    const confirmation = confirm('Voulez-vous vraiment vous déconnecter ?');
-
-    if (confirmation) {
-      console.log('👋 Déconnexion...');
-      // TODO: Appeler le service d'authentification
-      // this.authService.logout();
-      this.router.navigate(['/login']);
-    }
+    if (!confirm('Voulez-vous vous déconnecter ?')) return;
+    localStorage.removeItem('token');
+    this.toastr.info('Déconnexion réussie');
+    this.router.navigate(['/login']);
   }
 
-  /**
-   * Charger les évaluateurs depuis l'API
-   * (À implémenter avec le service)
-   */
+  /* ----------------------- FILTRES -------------------------- */
+
+  toggleFiltreActifs(): void {
+    this.filtreActifs = !this.filtreActifs;
+    this.chargerEvaluateurs();
+  }
+
+  /* ----------------------- CHARGEMENT ------------------------ */
+
   private chargerEvaluateurs(): void {
-    // TODO: Appeler l'API
-    // this.evaluateurService.obtenirTous().subscribe({
-    //   next: (response) => {
-    //     this.evaluateurs = response.data;
-    //     this.totalEvaluateurs = response.data.length;
-    //     // Calculer les évaluateurs actifs
-    //     this.evaluateursActifs = response.data.filter(
-    //       e => e.projetsAttribues > e.projetsTermines
-    //     ).length;
-    //   },
-    //   error: (error) => {
-    //     console.error('❌ Erreur chargement:', error);
-    //   }
-    // });
+    this.chargement = true;
+    this.evaluateurs = [];
+    this.totalEvaluateurs = 0;
+    this.evaluateursActifs = 0;
+
+    this.api.lister({ actif: this.filtreActifs }).subscribe({
+      next: (evaluateurs) => {
+        this.evaluateurs = evaluateurs;
+        this.totalEvaluateurs = evaluateurs.length;
+        this.evaluateursActifs = evaluateurs.filter(
+          (e) => e.projetsAttribues > 0 && e.projetsTermines < e.projetsAttribues
+        ).length;
+
+        const projetsUniques = new Set<string>();
+        const aapUniques = new Set<string>();
+
+        evaluateurs.forEach((e) => {
+          if (e.projetsAttribues > 0) {
+            projetsUniques.add(e.id);
+            aapUniques.add(e.id);
+          }
+        });
+
+        this.totalProjets = projetsUniques.size;
+        this.totalAAP = aapUniques.size;
+
+        this.toastr.success(`${this.totalEvaluateurs} évaluateurs chargés`);
+      },
+      error: (err) => {
+        console.error('Erreur lors du chargement des évaluateurs:', err);
+        this.toastr.error(err?.error?.message || 'Erreur lors du chargement des évaluateurs');
+      },
+      complete: () => {
+        this.chargement = false;
+      },
+    });
   }
 }

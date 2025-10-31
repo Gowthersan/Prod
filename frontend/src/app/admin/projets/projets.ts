@@ -24,7 +24,7 @@ import {
     RouterLinkActive,
   ],
   templateUrl: './projets.html',
-  styleUrl: './projets.css',
+   
 })
 export class Projets implements OnInit {
   private auth = inject(AuthService);
