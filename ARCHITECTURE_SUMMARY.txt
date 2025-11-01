@@ -1,0 +1,81 @@
+ARCHITECTURE RESUMEE - FPBG
+============================
+
+VUE GENERALE:
+- Monorepo: frontend (Angular 20) + backend (Node.js)
+- Stack: Angular, TypeScript, Tailwind / Express, Prisma, PostgreSQL
+- Auth: JWT + Rôles (UTILISATEUR, ADMINISTRATEUR, EVALUATEUR)
+
+FRONTEND (Angular 20):
+Modules:
+  - admin/ (dashboard, projets, evaluateurs [NOUVEAU], evaluations, etc.)
+  - evaluateur/ [NOUVEAU] (login, dashboard, evaluations)
+  - user/ (home, register, soumission)
+  - core/ (guards, auth service)
+  - services/ (API clients)
+
+Services API:
+  - evaluateurs.api.ts [NOUVEAU]
+  - demande-subvention.service.ts
+  - aap.service.ts
+  - organisation.service.ts
+
+Routes:
+  - admin/* (avec adminGuard)
+  - evaluateur/* [NOUVEAU]
+  - user/*
+
+BACKEND (Node.js + Express):
+Structure:
+  - controllers/ (logique HTTP)
+  - services/ (logique métier)
+  - routes/ (endpoints)
+  - middlewares/ (auth, errors)
+  - types/ (DTOs)
+  - prisma/ (schema.prisma)
+
+Endpoints Évaluateurs (/api/admin/evaluateurs):
+  POST   /             → Créer évaluateur
+  GET    /             → Lister
+  PATCH  /:id/suspendre
+  PATCH  /:id/reactiver
+  POST   /affecter      → Affecter à offres
+  POST   /prolonger     → Extension délai
+  POST   /evaluation    → Soumettre évaluation
+
+MODELES (Prisma):
+  - Utilisateur (role: EVALUATEUR)
+  - SessionEvaluation (session d'évaluation)
+  - Affectation (session + offre + évaluateur)
+  - Disponibilite (réponse dispo évaluateur)
+  - Extension (prolongement délai)
+  - Evaluation (évaluation d'une offre)
+  - NoteEvaluation (notes par critère)
+  - GrilleEvaluation/GrilleVersion (grilles figées)
+  - DemandeSubvention (demande subvention)
+  - SessionOffre (offre dans session)
+
+COMPARAISON:
+Évaluateurs vs Projets:
+  Évaluateurs: admin only, suspendre/reactiver, actif/inactif
+  Projets: admin + users, statuts (BROUILLON, SOUMIS, EN_REVUE, etc.)
+
+WORKFLOW EVALUATEURS:
+1. Admin crée session + grille figée
+2. Admin ajoute offres (DemandeSubvention) à session (SessionOffre)
+3. Admin crée évaluateurs (Utilisateur role=EVALUATEUR)
+4. Admin affecter évaluateurs à offres (Affectation)
+5. Évaluateur répond disponibilité (Disponibilite)
+6. Admin prolonge délai si demande (Extension)
+7. Évaluateur évalue avec grille (Evaluation + NoteEvaluation)
+8. Évaluateur soumet évaluation (Evaluation.statut = SOUMISE)
+9. Admin consulte résultats
+
+KEY POINTS:
+- Pattern Service-Controller-Route
+- Prisma ORM avec types générés
+- Angular Signals pour réactivité
+- JWT + Guards pour sécurité
+- Journalisation complète (JournalAction)
+- Notifications email + internes
+- Module Évaluateurs NOUVEAU et complet

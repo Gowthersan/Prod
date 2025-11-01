@@ -14,6 +14,7 @@ evaluateursRouter.post('/', EvaluateursController.creer);
 evaluateursRouter.get('/', EvaluateursController.lister);
 evaluateursRouter.patch('/:id/suspendre', EvaluateursController.suspendre);
 evaluateursRouter.patch('/:id/reactiver', EvaluateursController.reactiver);
+evaluateursRouter.delete('/:id', EvaluateursController.supprimer);
 
 /* ----------------------- ADMIN: AFFECTATIONS, EXT ---------------------- */
 evaluateursRouter.post('/affecter', EvaluateursController.affecter);

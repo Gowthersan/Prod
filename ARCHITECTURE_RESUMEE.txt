@@ -1,0 +1,270 @@
+ARCHITECTURE RESUMEE DU PROJET FPBG
+================================================
+
+VUE GENERALE
+============
+
+Monorepo: Frontend (Angular 20) + Backend (Node.js/Express)
+BD: PostgreSQL avec Prisma 6 ORM
+Auth: JWT + Rôles (UTILISATEUR, ADMINISTRATEUR, EVALUATEUR)
+
+FRONTEND (Angular 20)
+====================
+
+Structure:
+  - admin/ - Module administrateur
+  - evaluateur/ - Module évaluateur [NOUVEAU]
+  - user/ - Module utilisateurs
+  - core/ - Services + guards
+  - services/ - API clients (Axios)
+  - types/ - Modèles TypeScript
+
+Services API principaux:
+  - evaluateurs.api.ts [NOUVEAU]
+    * lister()
+    * creer()
+    * suspendre/reactiver()
+    * extension()
+  
+  - demande-subvention.service.ts
+    * obtenirTout()
+    * obtenirStatistiques()
+    * obtenirParId()
+  
+  - axios-instance.ts
+    Configuration HTTP unique
+
+Routes Frontend:
+  /admin/login → Connexion admin
+  /admin/dashboard → Tableau de bord
+  /admin/projets → Gestion demandes subvention
+  /admin/evaluateurs → Gestion évaluateurs [NOUVEAU]
+  /admin/evaluations → Suivi évaluations
+  
+  /evaluateur/login → Connexion évaluateur [NOUVEAU]
+  /evaluateur/dashboard → Tableau de bord [NOUVEAU]
+  /evaluateur/evaluations → Évaluer offres [NOUVEAU]
+
+Composants principaux:
+  admin/evaluateurs/evaluateurs.ts
+    → Liste évaluateurs
+    → Créer, suspendre, reactiver
+    → Approuver/refuser extensions
+  
+  admin/projets/projets.ts
+    → Liste demandes subvention
+    → Filtrer par statut
+    → Voir récapitulatif
+
+BACKEND (Node.js + Express)
+==========================
+
+Structure:
+  - controllers/ - Logique HTTP
+  - services/ - Logique métier
+  - routes/ - Endpoints API
+  - middlewares/ - Auth, errors, validation
+  - types/ - DTOs TypeScript
+  - prisma/ - Schéma BD
+
+Endpoints Évaluateurs (/api/admin/evaluateurs):
+  POST   / → Créer évaluateur
+  GET    / → Lister évaluateurs
+  PATCH  /:id/suspendre → Suspendre
+  PATCH  /:id/reactiver → Réactiver
+  POST   /affecter → Affecter offres
+  POST   /prolonger → Extension délai
+  POST   /evaluation → Soumettre évaluation
+  GET    /sessions/:id/offres → Mes offres
+
+Pattern Service-Controller-Route:
+  evaluateurs.route.ts (endpoints)
+      ↓
+  evaluateurs.controller.ts (HTTP logic)
+      ↓
+  evaluateurs.service.ts (business logic)
+      ↓
+  prisma (database)
+
+MODELES DE DONNEES (PRISMA)
+===========================
+
+Utilisateurs:
+  Utilisateur
+    id, email, nom, prenom, role (EVALUATEUR), actif
+    relations: affectations, disponibilites, extensions, evaluations
+
+Sessions d'Évaluation:
+  SessionEvaluation
+    nom, dateDebut, dateFin, etat (PLANIFIEE | EN_COURS | TERMINEE)
+    grilleVersionId (référence figée)
+    relations: offres, affectations, disponibilites, extensions, evaluations
+  
+  Affectation
+    sessionId, offreId, evaluateurId
+    statut (EN_ATTENTE | EN_COURS | SOUMISE | ANNULEE)
+    Unique: (sessionId, offreId, evaluateurId)
+  
+  Disponibilite
+    sessionId, evaluateurId
+    statut (EN_ATTENTE | OUI | NON)
+    Unique: (sessionId, evaluateurId)
+  
+  Extension
+    sessionId, evaluateurId
+    minutes (default 60)
+    accordeeParId (admin), expireLe (datetime)
+    Unique: (sessionId, evaluateurId)
+
+Évaluations:
+  Evaluation
+    sessionId, offreId, evaluateurId, grilleVersionId
+    statut (BROUILLON | SOUMISE), scorePct, commentaire, soumiseLe
+    relations: notes
+  
+  NoteEvaluation
+    evaluationId, critereId, valeurPct (0-100)
+    Unique: (evaluationId, critereId)
+
+Grilles d'Évaluation:
+  GrilleEvaluation
+    nom, estDefaut
+  
+  GrilleVersion
+    grilleId, version, figeeLe (null = éditable)
+    relations: sections
+  
+  SectionGrille
+    nom, poids
+    relations: criteres
+  
+  CritereGrille
+    libelle, poids (0 = masqué), pointsMax
+
+Demandes Subvention:
+  DemandeSubvention
+    code, statut (BROUILLON | SOUMIS | EN_REVUE | APPROUVE | REJETE)
+    titre, localisation, objectifs, budget
+    relations: sessions (SessionOffre), affectations, evaluations
+  
+  SessionOffre
+    sessionId, offreId
+    codeAnonyme (pour l'évaluateur)
+    Unique: (sessionId, offreId)
+
+FLUX COMPLET D'EVALUATION
+=========================
+
+1. Admin crée session d'évaluation
+2. Admin ajoute offres (DemandeSubvention) à session (SessionOffre)
+3. Admin crée évaluateurs (Utilisateur role=EVALUATEUR)
+   → Email envoyé avec identifiants
+4. Admin affecte évaluateurs à offres (Affectation)
+5. Évaluateur répond disponibilité (Disponibilite)
+6. Admin prolonge délai si demande (Extension)
+7. Évaluateur évalue offre (Evaluation + NoteEvaluation)
+   → Avec grille figée (GrilleVersion)
+8. Évaluateur soumet évaluation
+   → Score pondéré = (note1*poids1 + note2*poids2) / totalPoids
+9. Admin consulte résultats
+10. Admin approuve/rejette offre (DemandeSubvention)
+
+COMPARAISON: EVALUATEURS vs PROJETS
+====================================
+
+Évaluateurs:
+  - Admin uniquement
+  - CRUD: créer, lister, suspendre, reactiver
+  - Statuts: actif/inactif
+  - Affectations: session → offre → évaluateur
+  - API: /api/admin/evaluateurs
+  - Journalisation: complète
+  - Notifications: email + internes [NOUVEAU]
+
+Projets (Demandes Subvention):
+  - Admin + Utilisateurs
+  - CRUD: créer, lister, modifier
+  - Statuts: BROUILLON, SOUMIS, EN_REVUE, APPROUVE, REJETE
+  - API: /api/demandes
+  - Notifications: email
+
+POINTS CLES
+===========
+
+1. Pattern Service-Controller-Route
+   Séparation claire: route → controller → service → prisma
+
+2. Prisma ORM
+   Types générés, migrations, relations, constraints uniques
+
+3. JWT + Roles
+   Token Bearer, localStorage, 3 rôles distincts
+
+4. Angular 20 Signals
+   Réactivité moderne sans subscribe excessif
+
+5. DTOs Typés
+   Validation frontend + backend
+
+6. Module Évaluateurs NOUVEAU
+   Gestion complète: CRUD, affectations, extensions, évaluations
+
+7. Journalisation Complète
+   JournalAction pour traçabilité
+
+8. Notifications
+   Email (credentials) + internes (contexte: SESSION, AFFECTATION, etc.)
+
+FILES CREATED
+=============
+
+1. ARCHITECTURE_SUMMARY.txt (this file location)
+   - Architecture resumée
+   - Structure générale
+   - Endpoints
+   - Modèles BD
+   - Flux évaluateurs
+   - Points clés
+
+Fichiers originaux exploré:
+  - frontend/package.json
+  - backend/package.json
+  - backend/src/server.ts
+  - backend/src/controllers/evaluateurs.controller.ts
+  - backend/src/services/evaluateurs.service.ts
+  - backend/src/routes/evaluateurs.route.ts
+  - backend/src/types/evaluateurs.ts
+  - backend/prisma/schema.prisma
+  - frontend/src/app/services/evaluateurs.api.ts
+  - frontend/src/app/admin/evaluateurs/evaluateurs.ts
+  - frontend/src/app/admin/projets/projets.ts
+  - frontend/src/app/types/models.ts
+  - frontend/src/app/app.routes.ts
+  - frontend/src/app/admin/admin.route.ts
+  - frontend/src/app/evaluateur/evaluateur.route.ts
+  - frontend/src/app/core/admin.guard.ts
+  - Et + de 40 autres fichiers explorés
+
+RESUME FINAL
+============
+
+Architecture moderne et scalable pour une plateforme de gestion
+de subventions avec système d'évaluation complet.
+
+Frontend: Angular 20 avec Signals, Tailwind CSS
+Backend: Node.js + Express + Prisma
+BD: PostgreSQL
+Auth: JWT + 3 rôles
+
+Module Évaluateurs [NOUVEAU] offre:
+  - Gestion complète des évaluateurs
+  - Affectation flexible à des offres
+  - Extension de délai
+  - Disponibilités
+  - Évaluations avec grilles figées
+  - Scoring pondéré
+  - Journalisation complète
+  - Notifications par email
+
+Structure claire et maintenable pour la continuité du développement.
+

@@ -141,6 +141,10 @@ export class EvaluateursApi {
     return this.http.patch(`${this.base}/${idEvaluateur}/reactiver`, {}, this.h());
   }
 
+  supprimer(idEvaluateur: string) {
+    return this.http.delete(`${this.base}/${idEvaluateur}`, this.h());
+  }
+
   /**
    * Accorder ou refuser une extension.
    * - Pour autoriser : minutes = 60 (ou autre)

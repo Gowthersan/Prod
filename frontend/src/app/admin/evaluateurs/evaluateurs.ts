@@ -6,17 +6,12 @@ import { HttpClientModule } from '@angular/common/http';
 import { EvaluateursApi, Evaluateur, CreerEvaluateurDTO } from '../../services/evaluateurs.api';
 import { environment } from '../../../environments/environment';
 import { DemandeSubventionService } from '../../services/api/demande-subvention.service';
-import { ToastrService } from 'ngx-toastr';
-import { provideToastr } from 'ngx-toastr';
-import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
+import Swal from 'sweetalert2';
 
-// ⚠️ Id de session “courante” pour les actions d’extension.
+// ⚠️ Id de session "courante" pour les actions d'extension.
 //   - Récupère-le depuis la route / le store / une sélection admin.
 //   - En attendant, on lit un fallback dans localStorage.
 const getSessionCourante = () => localStorage.getItem('sessionCouranteId') || '';
-
-// @ts-ignore
-import { ToastrModule } from 'ngx-toastr';
 
 @Component({
   selector: 'app-evaluateurs',
@@ -42,12 +37,30 @@ export class Evaluateurs implements OnInit {
 
   // UI
   chargement = false;
+  chargementCreation = false;
 
   private demandeService = inject(DemandeSubventionService);
 
-  private toastr = inject(ToastrService);
-
   constructor(private router: Router, private api: EvaluateursApi) {}
+
+  /* -------------------------- NOTIFICATIONS -------------------------- */
+  private showToast(type: 'success' | 'error' | 'warning' | 'info', message: string, title?: string) {
+    const Toast = Swal.mixin({
+      toast: true,
+      position: 'top-right',
+      showConfirmButton: false,
+      timer: 3000,
+      timerProgressBar: true,
+      iconColor: type === 'success' ? '#00e8b6' : type === 'error' ? '#ff4444' : type === 'warning' ? '#ffa500' : '#3498db',
+      color: '#06417d',
+    });
+
+    Toast.fire({
+      icon: type,
+      title: title || message,
+      text: title ? message : undefined,
+    });
+  }
 
   ngOnInit(): void {
     this.chargerEvaluateurs();
@@ -64,14 +77,12 @@ export class Evaluateurs implements OnInit {
           this.totalProjets = response.data.length;
           const aapUniques = new Set(response.data.map((p) => p.appelProjets?.id).filter(Boolean));
           this.totalAAP = aapUniques.size;
-          this.toastr.info(
-            `Statistiques mises à jour : ${this.totalProjets} projets sur ${this.totalAAP} AAP`
-          );
+          this.showToast('info', `Statistiques mises à jour : ${this.totalProjets} projets sur ${this.totalAAP} AAP`);
         }
       },
       error: (err) => {
         console.error('Erreur lors du chargement des statistiques:', err);
-        this.toastr.error('Erreur lors du chargement des statistiques');
+        this.showToast('error', 'Erreur lors du chargement des statistiques');
       },
     });
   }
@@ -91,15 +102,15 @@ export class Evaluateurs implements OnInit {
   creerEvaluateur(): void {
     // Vérification des champs vides
     if (!this.nouvelEvaluateur.email) {
-      this.toastr.warning("L'adresse email est requise", 'Champ manquant');
+      this.showToast('warning', "L'adresse email est requise");
       return;
     }
     if (!this.nouvelEvaluateur.nom) {
-      this.toastr.warning('Le nom est requis', 'Champ manquant');
+      this.showToast('warning', 'Le nom est requis');
       return;
     }
     if (!this.nouvelEvaluateur.prenom) {
-      this.toastr.warning('Le prénom est requis', 'Champ manquant');
+      this.showToast('warning', 'Le prénom est requis');
       return;
     }
 
@@ -113,30 +124,33 @@ export class Evaluateurs implements OnInit {
     // Validation du format email
     const emailRegex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,6}$/;
     if (!emailRegex.test(evaluateur.email)) {
-      this.toastr.error("Le format de l'adresse email n'est pas valide", 'Format email incorrect');
+      this.showToast('error', "Le format de l'adresse email n'est pas valide");
       return;
     }
 
     // Validation de la longueur des champs
     if (evaluateur.nom.length < 2) {
-      this.toastr.warning('Le nom doit contenir au moins 2 caractères', 'Nom trop court');
+      this.showToast('warning', 'Le nom doit contenir au moins 2 caractères');
       return;
     }
     if (evaluateur.prenom.length < 2) {
-      this.toastr.warning('Le prénom doit contenir au moins 2 caractères', 'Prénom trop court');
+      this.showToast('warning', 'Le prénom doit contenir au moins 2 caractères');
       return;
     }
 
+    this.chargementCreation = true;
     this.api.creer(evaluateur).subscribe({
       next: (response) => {
         console.log('Évaluateur créé:', response);
+        this.chargementCreation = false;
         this.fermerModal();
         this.chargerEvaluateurs();
-        this.toastr.success('Évaluateur créé avec succès');
+        this.showToast('success', 'Évaluateur créé avec succès');
       },
       error: (err) => {
         console.error('Erreur lors de la création:', err);
-        this.toastr.error(err?.error?.message || "Erreur lors de la création de l'évaluateur");
+        this.chargementCreation = false;
+        this.showToast('error', err?.error?.message || "Erreur lors de la création de l'évaluateur");
       },
     });
   }
@@ -144,19 +158,16 @@ export class Evaluateurs implements OnInit {
   approuverExtension(e: Evaluateur): void {
     const idSession = getSessionCourante();
     if (!idSession) {
-      this.toastr.warning('Veuillez sélectionner une session avant de continuer');
+      this.showToast('warning', 'Veuillez sélectionner une session avant de continuer');
       return;
     }
     this.api.extension({ idSession, idEvaluateur: e.id, minutes: 60 }).subscribe({
       next: () => {
         e.extensionStatut = 'Autorisée';
-        this.toastr.success(`Extension autorisée pour ${e.prenom} ${e.nom}`, 'Extension accordée');
+        this.showToast('success', `Extension autorisée pour ${e.prenom} ${e.nom}`);
       },
       error: (er) => {
-        this.toastr.error(
-          er?.error?.message || "Erreur lors de l'extension",
-          "Échec de l'extension"
-        );
+        this.showToast('error', er?.error?.message || "Erreur lors de l'extension");
         console.error('Erreur extension:', er);
       },
     });
@@ -165,52 +176,66 @@ export class Evaluateurs implements OnInit {
   refuserExtension(e: Evaluateur): void {
     const idSession = getSessionCourante();
     if (!idSession) {
-      this.toastr.warning('Veuillez sélectionner une session avant de continuer');
+      this.showToast('warning', 'Veuillez sélectionner une session avant de continuer');
       return;
     }
     this.api.extension({ idSession, idEvaluateur: e.id, minutes: 0, refuse: true }).subscribe({
       next: () => {
         e.extensionStatut = 'Refusée';
-        this.toastr.info(`Extension refusée pour ${e.prenom} ${e.nom}`, 'Extension refusée');
+        this.showToast('info', `Extension refusée pour ${e.prenom} ${e.nom}`);
       },
       error: (er) => {
-        this.toastr.error(
-          er?.error?.message || "Erreur lors du refus d'extension",
-          "Échec de l'opération"
-        );
+        this.showToast('error', er?.error?.message || "Erreur lors du refus d'extension");
         console.error('Erreur refus extension:', er);
       },
     });
   }
 
   supprimerEvaluateur(e: Evaluateur): void {
-    if (!confirm(`Êtes-vous sûr de vouloir supprimer l'évaluateur ${e.prenom} ${e.nom} ?`)) {
-      return;
-    }
-    // Pas de DELETE prévu côté API -> on "suspend" l'utilisateur
-    this.api.suspendre(e.id).subscribe({
-      next: () => {
-        this.toastr.success(
-          `L'évaluateur ${e.prenom} ${e.nom} a été suspendu avec succès`,
-          'Évaluateur suspendu'
-        );
-        // On recharge la liste pour refléter le statut
-        this.chargerEvaluateurs();
-      },
-      error: (er) => {
-        this.toastr.error(
-          er?.error?.message || 'Une erreur est survenue lors de la suspension',
-          'Échec de la suspension'
-        );
-        console.error('Erreur suspension:', er);
-      },
+    Swal.fire({
+      title: 'Confirmer la suppression',
+      html: `Êtes-vous sûr de vouloir supprimer définitivement l'évaluateur <strong>${e.prenom} ${e.nom}</strong> ?<br><br>Cette action est <strong>irréversible</strong>.`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#ef4444',
+      cancelButtonColor: '#6b7280',
+      confirmButtonText: 'Oui, supprimer',
+      cancelButtonText: 'Annuler',
+      focusCancel: true,
+    }).then((result) => {
+      if (result.isConfirmed) {
+        // Afficher un loader pendant la suppression
+        Swal.fire({
+          title: 'Suppression en cours...',
+          text: 'Veuillez patienter',
+          allowOutsideClick: false,
+          allowEscapeKey: false,
+          didOpen: () => {
+            Swal.showLoading();
+          },
+        });
+
+        this.api.supprimer(e.id).subscribe({
+          next: () => {
+            Swal.close();
+            this.showToast('success', `L'évaluateur ${e.prenom} ${e.nom} a été supprimé avec succès`);
+            // On recharge la liste pour refléter la suppression
+            this.chargerEvaluateurs();
+          },
+          error: (er) => {
+            Swal.close();
+            this.showToast('error', er?.error?.message || 'Une erreur est survenue lors de la suppression');
+            console.error('Erreur suppression:', er);
+          },
+        });
+      }
     });
   }
 
   logout(): void {
     if (!confirm('Voulez-vous vous déconnecter ?')) return;
     localStorage.removeItem('token');
-    this.toastr.info('Déconnexion réussie');
+    this.showToast('info', 'Déconnexion réussie');
     this.router.navigate(['/login']);
   }
 
@@ -250,11 +275,11 @@ export class Evaluateurs implements OnInit {
         this.totalProjets = projetsUniques.size;
         this.totalAAP = aapUniques.size;
 
-        this.toastr.success(`${this.totalEvaluateurs} évaluateurs chargés`);
+        this.showToast('success', `${this.totalEvaluateurs} évaluateurs chargés`);
       },
       error: (err) => {
         console.error('Erreur lors du chargement des évaluateurs:', err);
-        this.toastr.error(err?.error?.message || 'Erreur lors du chargement des évaluateurs');
+        this.showToast('error', err?.error?.message || 'Erreur lors du chargement des évaluateurs');
       },
       complete: () => {
         this.chargement = false;

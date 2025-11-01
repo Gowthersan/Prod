@@ -52,6 +52,18 @@ export class EvaluateursService {
   async creerEvaluateur(adminId: string, data: CreerEvaluateurDTO) {
     if (!data.email?.trim()) throw new AppError("Email requis.", 400);
 
+    // Vérifier si l'email existe déjà
+    const emailExists = await prisma.utilisateur.findUnique({
+      where: { email: data.email.trim().toLowerCase() },
+    });
+
+    if (emailExists) {
+      throw new AppError(
+        "Un utilisateur avec cet email existe déjà. Veuillez utiliser un autre email.",
+        409
+      );
+    }
+
     // Générer un mot de passe sécurisé
     const password = generatePassword(12);
     const hash = await bcrypt.hash(password, 10);
@@ -149,6 +161,89 @@ export class EvaluateursService {
       description: `Réactivation évaluateur ${user.email}`,
     });
     return user;
+  }
+
+  async supprimer(adminId: string, idEvaluateur: string) {
+    // Vérifier que l'évaluateur existe et récupérer ses infos avant suppression
+    const evaluateur = await prisma.utilisateur.findUnique({
+      where: { id: idEvaluateur },
+    });
+
+    if (!evaluateur) {
+      throw new AppError("Évaluateur introuvable.", 404);
+    }
+
+    if (evaluateur.role !== "EVALUATEUR") {
+      throw new AppError("Cet utilisateur n'est pas un évaluateur.", 400);
+    }
+
+    // Journaliser AVANT la suppression (utilise EVALUATEUR_SUSPENDRE temporairement)
+    try {
+      await this.journaliser(adminId, TypeAction.EVALUATEUR_SUSPENDRE, {
+        idCible: idEvaluateur,
+        description: `Suppression définitive évaluateur ${evaluateur.email}`,
+      });
+    } catch (err) {
+      console.log("Erreur journalisation (non bloquante):", err);
+    }
+
+    // Supprimer les affectations, évaluations et disponibilités liées
+    await prisma.$transaction(async (tx) => {
+      // Supprimer les notes d'évaluation
+      await tx.noteEvaluation.deleteMany({
+        where: {
+          evaluation: {
+            evaluateurId: idEvaluateur,
+          },
+        },
+      });
+
+      // Supprimer les évaluations
+      await tx.evaluation.deleteMany({
+        where: { evaluateurId: idEvaluateur },
+      });
+
+      // Supprimer les affectations
+      await tx.affectation.deleteMany({
+        where: { evaluateurId: idEvaluateur },
+      });
+
+      // Supprimer les disponibilités
+      await tx.disponibilite.deleteMany({
+        where: { evaluateurId: idEvaluateur },
+      });
+
+      // Supprimer les extensions (accordées et reçues)
+      await tx.extension.deleteMany({
+        where: { evaluateurId: idEvaluateur },
+      });
+
+      await tx.extension.deleteMany({
+        where: { accordeeParId: idEvaluateur },
+      });
+
+      // Supprimer les notifications
+      await tx.notificationInterne.deleteMany({
+        where: {
+          OR: [
+            { destinataireId: idEvaluateur },
+            { envoyeParId: idEvaluateur },
+          ],
+        },
+      });
+
+      // Supprimer les journaux d'action
+      await tx.journalAction.deleteMany({
+        where: { utilisateurId: idEvaluateur },
+      });
+
+      // Enfin, supprimer l'utilisateur
+      await tx.utilisateur.delete({
+        where: { id: idEvaluateur },
+      });
+    });
+
+    return { message: "Évaluateur supprimé avec succès" };
   }
 
   /* ----------------------- AFFECTATIONS & DISPONIBILITÉ ------------------ */

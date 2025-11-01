@@ -1,6 +1,11 @@
 import { readFileSync } from "fs";
 import path from "path";
+import { fileURLToPath } from "url";
 import { sendMail } from "./mailer.js";
+
+// Configuration ESM pour __dirname
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 /**
  * Envoie les identifiants de connexion par email
@@ -23,18 +28,15 @@ export async function sendCredentialsEmail({
 }: CredentialsEmailData): Promise<void> {
   try {
     // Charger le template
-    const templatePath = path.join(
-      process.cwd(),
-      "backend",
-      "templates",
-      "email-credentials.html"
-    );
+    const templatePath = path.join(__dirname, "../../templates/email-credentials.html");
     let template = "";
 
     try {
       template = readFileSync(templatePath, "utf-8");
+      console.log("✅ Template email-credentials.html chargé depuis:", templatePath);
     } catch (err) {
-      console.error("Erreur lors de la lecture du template:", err);
+      console.error("❌ Erreur lors de la lecture du template:", err);
+      console.error("Chemin testé:", templatePath);
       // Template de secours en cas d'erreur
       template = `
         <!DOCTYPE html>
@@ -67,8 +69,8 @@ export async function sendCredentialsEmail({
       email,
       password,
       year: new Date().getFullYear().toString(),
-      login_url: "https://fpbg.example.com/login",
-      support_link: "https://fpbg.example.com/support",
+      login_url: process.env.FRONTEND_URL || "http://localhost:4200/admin/login",
+      support_link: process.env.SUPPORT_URL || "http://localhost:4200/support",
     };
 
     const htmlContent = template.replace(

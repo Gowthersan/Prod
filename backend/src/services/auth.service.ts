@@ -500,6 +500,8 @@ export class AuthService {
       let redirectTo = '/dashboard'; // Par défaut
       if (user.role === 'ADMINISTRATEUR') {
         redirectTo = '/admin/dashboard';
+      } else if (user.role === 'EVALUATEUR') {
+        redirectTo = '/evaluateur/dashboard';
       }
 
       console.log('✅ [AUTH SERVICE] Login réussi:', {

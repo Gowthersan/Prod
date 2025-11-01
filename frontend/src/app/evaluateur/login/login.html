@@ -1,71 +1,73 @@
-<div class="flex items-center justify-center min-h-screen bg-gradient-to-br from-emerald-50 to-teal-100">
-  <div class="w-full max-w-md p-8 bg-white rounded-2xl shadow-xl">
-    <div class="mb-8 text-center">
-      <h1 class="text-3xl font-bold text-emerald-600">ESPACE ÉVALUATEUR</h1>
-      <p class="mt-2 text-sm text-slate-600">Connectez-vous pour évaluer les projets</p>
+<!-- Fond plein écran -->
+<div class="min-h-screen grid place-items-center bg-[#1f3b52] px-4">
+  <!-- Carte -->
+  <div
+    class="w-full max-w-xl rounded-2xl bg-[#112B3C] text-white p-8 shadow-2xl border border-white/10"
+  >
+    <!-- Logo -->
+    <div class="flex justify-center">
+      <img src="assets/logo.png" alt="FPBG" class="w-auto h-14" />
     </div>
 
-    <form [formGroup]="form" (ngSubmit)="submit()" class="space-y-5">
+    <!-- Titre -->
+    <h1 class="mt-4 text-4xl font-bold text-center">Espace Évaluateur</h1>
+    <p class="mt-2 text-sm text-center text-white/70">Connectez-vous pour évaluer les projets</p>
+
+    <!-- Formulaire -->
+    <form (ngSubmit)="submit()" [formGroup]="form" class="mt-6 space-y-4">
+      <!-- Email -->
       <div>
-        <label for="email" class="block text-sm font-medium text-slate-700 mb-1">
-          Email
-        </label>
+        <label class="block mb-1 text-sm">Email</label>
         <input
-          id="email"
           type="email"
           formControlName="email"
-          placeholder="votre.email@example.com"
-          class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-          [class.border-red-500]="form.get('email')?.invalid && form.get('email')?.touched"
+          placeholder="votre adresse email"
+          class="w-full rounded-lg bg-[#1f4a63] border border-white/10 text-white placeholder-white/60 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500"
         />
         <p
-          *ngIf="form.get('email')?.invalid && form.get('email')?.touched"
-          class="mt-1 text-xs text-red-600"
+          class="mt-1 text-xs text-red-400"
+          *ngIf="form.get('email')?.touched && form.get('email')?.invalid"
         >
-          Email requis et valide
+          adresse email invalide
         </p>
       </div>
 
+      <!-- Mot de passe + lien oublié -->
       <div>
-        <label for="motDePasse" class="block text-sm font-medium text-slate-700 mb-1">
-          Mot de passe
-        </label>
+        <div class="flex items-center justify-between">
+          <label class="block mb-1 text-sm">Mot de passe</label>
+          <a routerLink="/forgot-password" class="text-xs text-green-400 hover:text-green-300">
+            Mot de passe oublié ?
+          </a>
+        </div>
         <input
-          id="motDePasse"
           type="password"
           formControlName="motDePasse"
-          placeholder="••••••••"
-          class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-          [class.border-red-500]="form.get('motDePasse')?.invalid && form.get('motDePasse')?.touched"
+          placeholder="votre mot de passe"
+          class="w-full rounded-lg bg-[#1f4a63] border border-white/10 text-white placeholder-white/60 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500"
         />
         <p
-          *ngIf="form.get('motDePasse')?.invalid && form.get('motDePasse')?.touched"
-          class="mt-1 text-xs text-red-600"
+          class="mt-1 text-xs text-red-400"
+          *ngIf="form.get('motDePasse')?.touched && form.get('motDePasse')?.invalid"
         >
-          Mot de passe requis (min. 6 caractères)
+          6 caractères minimum
         </p>
       </div>
 
+      <!-- Bouton -->
       <button
-        type="submit"
+        class="w-full py-3 font-semibold bg-green-600 rounded-lg hover:bg-green-700 disabled:opacity-60"
         [disabled]="loading || form.invalid"
-        class="w-full px-4 py-3 text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-colors"
       >
-        <span *ngIf="!loading">Se connecter</span>
-        <span *ngIf="loading" class="flex items-center justify-center">
-          <svg class="w-5 h-5 mr-2 animate-spin" viewBox="0 0 24 24">
-            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle>
-            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-          </svg>
-          Connexion...
-        </span>
+        {{ loading ? 'Connexion...' : 'Se connecter' }}
       </button>
     </form>
 
+    <!-- Lien admin -->
     <div class="mt-6 text-center">
-      <p class="text-sm text-slate-600">
+      <p class="text-sm text-white/70">
         Vous êtes administrateur ?
-        <a routerLink="/admin/login" class="text-emerald-600 hover:text-emerald-700 font-medium">
+        <a routerLink="/admin/login" class="text-green-400 hover:text-green-300 font-medium">
           Connexion admin
         </a>
       </p>

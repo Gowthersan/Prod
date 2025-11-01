@@ -59,6 +59,17 @@ export class EvaluateursController {
         } catch (e) { next(e); }
     }
 
+    static async supprimer(req: Request, res: Response, next: NextFunction) {
+        try {
+            const user = (req as any).user;
+            if (user?.role !== 'ADMINISTRATEUR') throw new AppError('Accès refusé', 403);
+
+            const id = EvaluateursController.assertId('idEvaluateur', req.params.id);
+            const data = await evaluateursService.supprimer(user.userId, id);
+            res.json({ message: 'Évaluateur supprimé', data });
+        } catch (e) { next(e); }
+    }
+
     static async affecter(req: Request, res: Response, next: NextFunction) {
         try {
             const user = (req as any).user;
